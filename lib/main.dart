@@ -44,17 +44,30 @@ class _MyHomepagaState extends State<MyHomepaga> {
               children: [
                 Icon(
                   Icons.person,
-                  size: 28,
-                  color: const Color.fromARGB(255, 37, 39, 39),
+                  size: 40,
+                  color: Colors.black,
                 ),
                 SizedBox(width: 20),
-                Text(
-                  "แสดงชื่อผู้ใช้",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.redAccent),
-                  overflow: TextOverflow.ellipsis,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "ยินดีต้อนรับ",
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color.fromARGB(255, 7, 0, 0)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      "ภิเษก",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color.fromARGB(255, 2, 0, 0)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -62,6 +75,7 @@ class _MyHomepagaState extends State<MyHomepaga> {
             actions: [
               IconButton(
                 icon: Icon(Icons.notifications),
+                color: Colors.black,
                 onPressed: () {},
               ),
             ],
@@ -70,37 +84,26 @@ class _MyHomepagaState extends State<MyHomepaga> {
         body: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage("assets/ipad.jpg"), // ✅ ใช้รูปพื้นหลัง
+              image: AssetImage("assets/po1.png"), // ✅ ใช้รูปพื้นหลัง
               fit: BoxFit.cover, // ✅ ปรับให้รูปเต็มจอ
             ),
           ),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "เพิ่มจำนวน",
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                Text(
-                  number.toString(),
-                  style: TextStyle(
-                    fontSize: 60,
-                  ),
-                ),
-              ],
+              children: [//ต้องแก้ไข],
             ),
           ),
         ),
         bottomNavigationBar: BottomNavigationBar(
-          backgroundColor:
-              Color.fromARGB(240, 51, 51, 47), // ✅ เปลี่ยนสีพื้นหลังของแถบบาร์
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: const Color.fromARGB(
+              199, 0, 0, 0), // ✅ เปลี่ยนสีพื้นหลังของแถบบาร์
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
           selectedItemColor: const Color.fromARGB(255, 235, 157, 40),
           unselectedItemColor: const Color.fromARGB(255, 228, 221, 221),
+          elevation: 0, // ✅ ลดเงาของ BottomNavigationBar
           items: [
             BottomNavigationBarItem(
                 icon: Icon(
@@ -128,14 +131,6 @@ class _MyHomepagaState extends State<MyHomepaga> {
                 ),
                 label: "บิลซัพพายเออร์"),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            setState(() {
-              number++;
-            });
-          },
-          child: Icon(Icons.add),
         ),
       ),
     );
