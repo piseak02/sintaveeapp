@@ -91,7 +91,31 @@ class _MyHomepagaState extends State<MyHomepaga> {
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [//ต้องแก้ไข],
+              children: [
+                Spacer(),
+                Padding(
+                  padding: EdgeInsets.only(bottom: 20),
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 30,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(200),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.insert_drive_file),
+                        Text("เพิ่มรายการ"),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -121,15 +145,9 @@ class _MyHomepagaState extends State<MyHomepaga> {
                 ),
                 label: "เมนูหลัก"),
             BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.receipt,
-                ),
-                label: "บิลลูกค้า"),
+                icon: Icon(Icons.receipt_long), label: "บิลลูกค้า"),
             BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.business,
-                ),
-                label: "บิลซัพพายเออร์"),
+                icon: Icon(Icons.description), label: "บิลซัพพายเออร์"),
           ],
         ),
       ),
