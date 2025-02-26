@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sintaveeapp/AccountPageApp/account_page.dart';
 
 class BottomNavbar extends StatelessWidget {
   const BottomNavbar(
@@ -6,6 +7,17 @@ class BottomNavbar extends StatelessWidget {
 
   final int currentIndex;
   final Function(int) onTap;
+
+  void _handleNavigation(int index, BuildContext context) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => Myaccount()),
+      );
+    } else {
+      onTap(index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +31,7 @@ class BottomNavbar extends StatelessWidget {
       unselectedItemColor: const Color.fromARGB(255, 228, 221, 221),
       elevation: 0, //  ลดเงาของ BottomNavigationBar
       currentIndex: currentIndex,
-      onTap: onTap,
+      onTap: (index) => _handleNavigation(index, context),
       items: [
         BottomNavigationBarItem(
             icon: Icon(
