@@ -11,16 +11,28 @@ class _MyaccountState extends State<Myaccount> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage("assets/po1.png"),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.orange,
+      backgroundColor: Colors.grey[200],
+      body: Column(
+        children: [
+          /// ส่วนหัวของแอพ
+          Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              ////พื้นหลังส่วนบน
+              Container(
+                height: 180,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade300, Colors.orange.shade100],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ],
+          )
+        ],
       ),
     );
   }
