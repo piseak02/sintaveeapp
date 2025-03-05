@@ -50,10 +50,18 @@ class _MyaccountState extends State<Myaccount> {
                   ),
                 ),
               ),
+
+              ////ข้อความวันที่และเวลาและชื่อ
               Positioned(
                 top: 80,
                 child: Column(
                   children: [
+                    Text(
+                      "บัญชีทั้งหมด",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 5),
                     Text(
                       "27 ก.พ 2568 15.13",
                       style: TextStyle(
@@ -63,7 +71,24 @@ class _MyaccountState extends State<Myaccount> {
                   ],
                 ),
               ),
+              SizedBox(height: 50),
             ],
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "บัญชีทั้งหมด",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
+                ),
+                Text("สรุปข้อมูลบัญชี"),
+              ],
+            ),
           ),
         ],
       ),
