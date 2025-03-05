@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-// import 'HomepageApp/my_homepage.dart';
-import 'Product/addProduct.dart';
+import 'HomepageApp/my_homepage.dart';
+// import 'Product/addProduct.dart';
 
 void main() {
   runApp(Myapp());
@@ -17,7 +17,7 @@ class Myapp extends StatelessWidget {
         primaryColor: Colors.orange,
       ),
       title: "หน้าแรก",
-      home: Myaddproduct(),
+      home: MyHomepage(),
     );
   }
 }
