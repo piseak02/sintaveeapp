@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // import 'HomepageApp/my_homepage.dart';
-import 'Product/addProduct.dart';
+import 'package:sintaveeapp/Product/add_Product.dart';
 
 void main() {
   runApp(Myapp());
