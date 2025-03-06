@@ -24,7 +24,7 @@ class BottomNavbar extends StatelessWidget {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       backgroundColor:
-          const Color.fromARGB(199, 0, 0, 0), //  เปลี่ยนสีพื้นหลังของแถบบาร์
+          const Color.fromARGB(230, 0, 0, 0), //  เปลี่ยนสีพื้นหลังของแถบบาร์
       showSelectedLabels: false,
       showUnselectedLabels: false,
       selectedItemColor: const Color.fromARGB(255, 235, 157, 40),
