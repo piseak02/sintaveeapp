@@ -31,6 +31,20 @@ class _MyaddproductState extends State<Myaddproduct> {
                 ],
               ),
             ),
+            Title(
+              color: Colors.black,
+              child: Text("ชื่อสินค้า"),
+            ),
+            Column(
+              children: [
+                TextFormField(
+                  decoration: const InputDecoration(
+                    border: UnderlineInputBorder(),
+                    labelText: 'กรอกชื่อสินค้า',
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
