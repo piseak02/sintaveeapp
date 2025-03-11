@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 
@@ -76,7 +77,7 @@ class _MyAddProductState extends State<MyAddProduct> {
       builder: (context) {
         return AlertDialog(
           title: Text("จัดการหมวดหมู่"),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite, // ให้ Dialog ขยายตามเนื้อหา
             child: _categories.isEmpty
                 ? Center(
@@ -132,14 +133,13 @@ class _MyAddProductState extends State<MyAddProduct> {
                   /// ส่วนหัว
                   TPrimaryHeaderContainer(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: EdgeInsets.symmetric(vertical: 16),
                       child: Text(
                         "เพิ่มรายการสินค้า",
                         style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: const Color.fromARGB(255, 252, 250, 250)),
                       ),
                     ),
                   ),
