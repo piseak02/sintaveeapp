@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
+import 'package:sintaveeapp/Product/EditProduct.dart';
+import 'package:sintaveeapp/Product/addProduct.dart';
 
 class MyHomepage extends StatefulWidget {
   const MyHomepage({super.key});
@@ -83,26 +85,22 @@ class _MyHomepagaState extends State<MyHomepage> {
             SizedBox(height: 30), //  เพิ่มระยะห่างด้านบน
             ///Spacer(),  //ทำให้ปุ่มทางลัดอยู่ด้านล่างคำสั่งนี้***
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Wrap(
-                alignment: WrapAlignment.start, //  จัดให้อยู่ตรงกลาง
-                spacing: 20, //  ระยะห่างระหว่างไอคอนในแถวเดียวกัน
-                runSpacing: 15, //  ระยะห่างระหว่างแถว
-                children: [
-                  _buildShortcut(icon: Icons.add, title: "เพิ่มรายการ"),
-                  _buildShortcut(icon: Icons.edit, title: "แก้ไขรายการ"),
-                  _buildShortcut(icon: Icons.assignment, title: "แสดงรายการ"),
-                  _buildShortcut(
-                      icon: Icons.priority_high, title: "สินค้าใกล้หมดอายุ"),
-                  _buildShortcut(icon: Icons.price_change, title: "แก้ไขราคา"),
-                  _buildShortcut(
-                      icon: Icons.production_quantity_limits_sharp,
-                      title: "เพิ่มสต็อก"),
-                  _buildShortcut(
-                      icon: Icons.barcode_reader, title: "คำนวนราคา"),
-                ],
-              ),
-            ),
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Wrap(
+        alignment: WrapAlignment.start,
+        spacing: 20,
+        runSpacing: 15,
+        children: [
+          _buildShortcut(icon: Icons.add, title: "เพิ่มรายการ", context: context),
+          _buildShortcut(icon: Icons.edit, title: "แก้ไขรายการ", context: context),
+          _buildShortcut(icon: Icons.assignment, title: "แสดงรายการ", context: context),
+          _buildShortcut(icon: Icons.priority_high, title: "สินค้าใกล้หมดอายุ", context: context),
+          _buildShortcut(icon: Icons.price_change, title: "แก้ไขราคา", context: context),
+          _buildShortcut(icon: Icons.production_quantity_limits_sharp, title: "เพิ่มสต็อก", context: context),
+          _buildShortcut(icon: Icons.barcode_reader, title: "คำนวนราคา", context: context),
+        ],
+      ),
+    ),
           ],
         ),
       ),
@@ -113,28 +111,44 @@ class _MyHomepagaState extends State<MyHomepage> {
     );
   }
 
-  Widget _buildShortcut({required IconData icon, required String title}) {
-    return SizedBox(
-      width: 100, //  กำหนดขนาดปุ่มให้เท่ากัน
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(185, 15, 10, 1), //  สีพื้นหลังของปุ่ม
-              borderRadius: BorderRadius.circular(12),
+    Widget _buildShortcut({required IconData icon, required String title, required BuildContext context}) {
+    Map<String, Widget> routes = {
+      "แก้ไขรายการ": EditProduct(),
+      "เพิ่มรายการ": Myaddproduct(), // สมมติว่ามีหน้า AddProduct
+      // "แสดงรายการ": ShowProduct(), // สมมติว่ามีหน้า ShowProduct
+    };
+
+    return GestureDetector(
+      onTap: () {
+        if (routes.containsKey(title)) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => routes[title]!),
+          );
+        }
+      },
+      child: SizedBox(
+        width: 100,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(185, 15, 10, 1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon,
+                  size: 28, color: const Color.fromARGB(255, 243, 242, 242)),
             ),
-            child: Icon(icon,
-                size: 28, color: const Color.fromARGB(255, 243, 242, 242)),
-          ),
-          SizedBox(height: 8), //  ระยะห่างระหว่างไอคอนกับข้อความ
-          Text(
-            title,
-            textAlign: TextAlign.center, //  จัดให้อยู่ตรงกลาง
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-        ],
+            SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }
