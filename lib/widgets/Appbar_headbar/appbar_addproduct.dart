@@ -13,4 +13,4 @@ class AppbarAddProduct extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
-}
+}/////
