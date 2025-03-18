@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'package:hive/hive.dart';
+import '../Database/product_model.dart';
+import '../Database/category_model.dart';
 import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 
@@ -12,30 +14,74 @@ class MyAddProduct extends StatefulWidget {
 
 class _MyAddProductState extends State<MyAddProduct> {
   int _selectedIndex = 0;
-
-  /// รายการหมวดหมู่สินค้า
-  final List<String> _categories = [];
-
-  /// เก็บค่าหมวดหมู่ที่เลือก
+  Box<ProductModel>? productBox;
+  Box<CategoryModel>? categoryBox;
+  List<String> _categories = [];
   String? _selectedCategory;
 
-  /// ตัวควบคุม TextField
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
 
-  /// ฟังก์ชันเปลี่ยนหน้าใน BottomNavBar
-  void onItemTapped(int index) {
+  @override
+  void initState() {
+    super.initState();
+    productBox = Hive.box<ProductModel>('products');
+    categoryBox = Hive.box<CategoryModel>('categories');
+    _loadCategories();
+  }
+
+  void _loadCategories() {
     setState(() {
-      _selectedIndex = index;
+      _categories = categoryBox!.values.map((c) => c.name).toList();
     });
   }
 
-  /// ฟังก์ชันเปิด Dialog สำหรับสร้างหมวดหมู่ใหม่
+  void _addProduct() {
+    final name = _productNameController.text.trim();
+    final price = double.tryParse(_priceController.text) ?? 0;
+    final quantity = int.tryParse(_quantityController.text) ?? 0;
+    final expiryDate = _expiryDateController.text.trim();
+    final category = _selectedCategory ?? "ไม่ระบุ";
+
+    if (name.isNotEmpty) {
+      final newProduct = ProductModel(
+        name: name,
+        price: price,
+        quantity: quantity,
+        expiryDate: expiryDate,
+        category: category,
+      );
+
+      productBox!.add(newProduct);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("เพิ่มสินค้าสำเร็จ")),
+      );
+      _clearFields();
+    }
+  }
+
+  void _clearFields() {
+    _productNameController.clear();
+    _priceController.clear();
+    _quantityController.clear();
+    _expiryDateController.clear();
+    setState(() {
+      _selectedCategory = null;
+    });
+  }
+
+  void _addCategory(String category) {
+    if (category.isNotEmpty &&
+        !categoryBox!.values.any((c) => c.name == category)) {
+      categoryBox!.add(CategoryModel(name: category));
+      _loadCategories();
+    }
+  }
+
   void _showAddCategoryDialog() {
     TextEditingController categoryController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -49,19 +95,19 @@ class _MyAddProductState extends State<MyAddProduct> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // ปิด Popup
+            onPressed: () => Navigator.pop(context),
             child: Text("ยกเลิก"),
           ),
           TextButton(
             onPressed: () {
               String newCategory = categoryController.text.trim();
               if (newCategory.isNotEmpty) {
+                _addCategory(newCategory);
                 setState(() {
-                  _categories.add(newCategory); // เพิ่มหมวดหมู่ใหม่ใน List
-                  _selectedCategory = newCategory; // เลือกหมวดหมู่ใหม่ทันที
+                  _selectedCategory = newCategory;
                 });
               }
-              Navigator.pop(context); // ปิด Popup
+              Navigator.pop(context);
             },
             child: Text("บันทึก"),
           ),
@@ -70,67 +116,75 @@ class _MyAddProductState extends State<MyAddProduct> {
     );
   }
 
-  /// ฟังก์ชันเปิด Dialog สำหรับจัดการ (แก้ไข/ลบ) หมวดหมู่ที่มีอยู่
   void _showManageCategoriesDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text("จัดการหมวดหมู่"),
-          content: SizedBox(
-            width: double.maxFinite, // ให้ Dialog ขยายตามเนื้อหา
-            child: _categories.isEmpty
-                ? Center(
-                    child: Text("ยังไม่มีหมวดหมู่"),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      return ListTile(
-                        title: Text(cat),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              // ถ้าหมวดหมู่ที่ลบเป็นอันเดียวกับที่เลือกอยู่ ให้ลบการเลือกด้วย
-                              if (_selectedCategory == cat) {
-                                _selectedCategory = null;
-                              }
-                              _categories.removeAt(index);
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("ปิด"),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            // ใช้ StatefulBuilder เพื่ออัปเดต UI ของ Dialog
+            return AlertDialog(
+              title: Text("จัดการหมวดหมู่"),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: _categories.isEmpty
+                    ? Center(child: Text("ยังไม่มีหมวดหมู่"))
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          return ListTile(
+                            title: Text(cat),
+                            trailing: IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                categoryBox!.deleteAt(index); // ลบจาก Hive
+                                setState(() {
+                                  _categories
+                                      .removeAt(index); // ลบจากรายการใน UI
+                                  if (_selectedCategory == cat) {
+                                    _selectedCategory = null;
+                                  }
+                                });
+                                setStateDialog(() {}); // รีเฟรช Dialog ทันที
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("ปิด"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
+  void onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      /// ใช้ Container คลุมทั้งหมด และตั้งค่าพื้นหลังเป็นสีขาว
       body: Container(
-        color: Colors.white, // พื้นหลังสีขาวทั้งหมด
+        color: Colors.white,
         child: SingleChildScrollView(
           child: Center(
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 500), // จำกัดความกว้าง
+              constraints: BoxConstraints(maxWidth: 500),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  /// ส่วนหัว
                   TPrimaryHeaderContainer(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
@@ -139,20 +193,16 @@ class _MyAddProductState extends State<MyAddProduct> {
                         style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: const Color.fromARGB(255, 252, 250, 250)),
+                            color: Colors.white),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  /// Container สีขาว
                   Container(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// แถวที่มี "สร้างหมวดหมู่ใหม่" และไอคอนดินสอ
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -175,8 +225,6 @@ class _MyAddProductState extends State<MyAddProduct> {
                           ],
                         ),
                         const SizedBox(height: 8),
-
-                        /// เลือกหมวดหมู่
                         DropdownButtonFormField<String>(
                           decoration: _inputDecoration("เลือกหมวดหมู่"),
                           value: _selectedCategory,
@@ -192,69 +240,27 @@ class _MyAddProductState extends State<MyAddProduct> {
                             });
                           },
                         ),
-
                         const SizedBox(height: 16),
-
-                        /// ชื่อสินค้า
                         _buildTextField(
-                          controller: _productNameController,
-                          label: "ชื่อสินค้า",
-                        ),
-
-                        /// ราคา
+                            controller: _productNameController,
+                            label: "ชื่อสินค้า"),
                         _buildTextField(
-                          controller: _priceController,
-                          label: "ราคา",
-                          keyboardType: TextInputType.number,
-                        ),
-
-                        /// จำนวน
+                            controller: _priceController,
+                            label: "ราคา",
+                            keyboardType: TextInputType.number),
                         _buildTextField(
-                          controller: _quantityController,
-                          label: "จำนวน",
-                          keyboardType: TextInputType.number,
-                        ),
-
-                        /// วันหมดอายุ
+                            controller: _quantityController,
+                            label: "จำนวน",
+                            keyboardType: TextInputType.number),
                         _buildTextField(
-                          controller: _expiryDateController,
-                          label: "วันหมดอายุ (ตัวอย่าง: 2025-12-31)",
-                          keyboardType: TextInputType.datetime,
-                        ),
-
+                            controller: _expiryDateController,
+                            label: "วันหมดอายุ (YYYY-MM-DD)",
+                            keyboardType: TextInputType.datetime),
                         const SizedBox(height: 20),
-
-                        /// ปุ่มบันทึก
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              final category = _selectedCategory;
-                              final productName = _productNameController.text;
-                              final price = _priceController.text;
-                              final quantity = _quantityController.text;
-                              final expiryDate = _expiryDateController.text;
-
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: Text("ผลลัพธ์การบันทึก"),
-                                  content: Text(
-                                    "หมวดหมู่: $category\n"
-                                    "ชื่อสินค้า: $productName\n"
-                                    "ราคา: $price\n"
-                                    "จำนวน: $quantity\n"
-                                    "วันหมดอายุ: $expiryDate",
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text("ปิด"),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                            onPressed: _addProduct,
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
@@ -262,17 +268,14 @@ class _MyAddProductState extends State<MyAddProduct> {
                               ),
                               backgroundColor: Colors.orange,
                             ),
-                            child: Text(
-                              "บันทึกสินค้า",
-                              style:
-                                  TextStyle(fontSize: 16, color: Colors.white),
-                            ),
+                            child: Text("บันทึกสินค้า",
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.white)),
                           ),
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
                 ],
               ),
@@ -280,8 +283,6 @@ class _MyAddProductState extends State<MyAddProduct> {
           ),
         ),
       ),
-
-      /// แถบเมนูด้านล่าง
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
         onTap: onItemTapped,
@@ -289,32 +290,24 @@ class _MyAddProductState extends State<MyAddProduct> {
     );
   }
 
-  /// Widget สำหรับสร้าง TextField
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+  Widget _buildTextField(
+      {required TextEditingController controller,
+      required String label,
+      TextInputType keyboardType = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: _inputDecoration(label),
-      ),
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: _inputDecoration(label)),
     );
   }
 
-  /// ฟังก์ชันสร้าง InputDecoration ที่มีขอบโค้งมน
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
-      labelText: label,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-    );
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.white);
   }
 }
