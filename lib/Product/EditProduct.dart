@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import '../Database/product_model.dart';
+import '../Database/category_model.dart';
 
 class EditProduct extends StatefulWidget {
   const EditProduct({super.key});
@@ -8,28 +11,43 @@ class EditProduct extends StatefulWidget {
 }
 
 class _EditProductState extends State<EditProduct> {
-  // หมวดหมู่สินค้า (ตัวอย่างข้อมูล)
-  final List<String> categories = ["ทั้งหมด", "เครื่องดื่ม", "ขนม", "อาหารสด"];
+  Box<ProductModel>? productBox;
+  Box<CategoryModel>? categoryBox;
 
-  // หมวดหมู่ที่เลือก
+  List<String> categories = ["ทั้งหมด"];
   String selectedCategory = "ทั้งหมด";
+  List<ProductModel> allProducts = [];
 
-  // รายการสินค้า (ข้อมูลปลอม)
-  final List<Map<String, dynamic>> allProducts = [
-    {"name": "โค้ก", "category": "เครื่องดื่ม", "price": 20},
-    {"name": "เป๊ปซี่", "category": "เครื่องดื่ม", "price": 18},
-    {"name": "มันฝรั่งทอด", "category": "ขนม", "price": 30},
-    {"name": "ข้าวกล่อง", "category": "อาหารสด", "price": 50},
-    {"name": "น้ำแร่", "category": "เครื่องดื่ม", "price": 15},
-    {"name": "เค้กช็อคโกแลต", "category": "ขนม", "price": 55},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    productBox = Hive.box<ProductModel>('products');
+    categoryBox = Hive.box<CategoryModel>('categories');
+    _loadData();
+  }
+
+  /// โหลดข้อมูลสินค้าและหมวดหมู่จาก Hive
+  void _loadData() {
+    setState(() {
+      // โหลดหมวดหมู่จาก Hive และเพิ่ม "ทั้งหมด" ไว้เป็นตัวเลือกแรก
+      categories = [
+        "ทั้งหมด",
+        ...categoryBox!.values.map((c) => c.name).toList()
+      ];
+
+      // โหลดสินค้า
+      allProducts = productBox!.values.toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     // กรองสินค้าโดยดูจากหมวดหมู่ที่เลือก
-    List<Map<String, dynamic>> filteredProducts = selectedCategory == "ทั้งหมด"
+    List<ProductModel> filteredProducts = selectedCategory == "ทั้งหมด"
         ? allProducts
-        : allProducts.where((product) => product["category"] == selectedCategory).toList();
+        : allProducts
+            .where((product) => product.category == selectedCategory)
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -41,8 +59,9 @@ class _EditProductState extends State<EditProduct> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dropdown สำหรับเลือกหมวดหมู่
-            Text("เลือกหมวดหมู่:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            /// Dropdown สำหรับเลือกหมวดหมู่
+            Text("เลือกหมวดหมู่:",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
             DropdownButton<String>(
               isExpanded: true,
@@ -61,29 +80,38 @@ class _EditProductState extends State<EditProduct> {
             ),
             SizedBox(height: 20),
 
-            // แสดงรายการสินค้า
-            Text("รายการสินค้า:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            /// แสดงรายการสินค้า
+            Text("รายการสินค้า:",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
 
             Expanded(
-              child: ListView.builder(
-                itemCount: filteredProducts.length,
-                itemBuilder: (context, index) {
-                  var product = filteredProducts[index];
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 5),
-                    child: ListTile(
-                      title: Text(product["name"], style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      subtitle: Text("หมวดหมู่: ${product["category"]}"),
-                      trailing: Text("${product["price"]} บาท", style: TextStyle(fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold)),
-                      onTap: () {
-                        // สามารถเพิ่มโค้ดแก้ไขสินค้าเมื่อกดได้
-                        print("แก้ไข: ${product["name"]}");
+              child: filteredProducts.isEmpty
+                  ? Center(child: Text("ไม่มีสินค้าในหมวดหมู่นี้"))
+                  : ListView.builder(
+                      itemCount: filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        var product = filteredProducts[index];
+                        return Card(
+                          margin: EdgeInsets.symmetric(vertical: 5),
+                          child: ListTile(
+                            title: Text(product.name,
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w600)),
+                            subtitle: Text("หมวดหมู่: ${product.category}"),
+                            trailing: Text("${product.price} บาท",
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold)),
+                            onTap: () {
+                              // สามารถเพิ่มโค้ดแก้ไขสินค้าเมื่อกดได้
+                              print("แก้ไข: ${product.name}");
+                            },
+                          ),
+                        );
                       },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
