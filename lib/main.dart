@@ -22,18 +22,39 @@
 //   }
 // }
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
 import 'Product/add_product.dart';
 import 'HomepageApp/my_homepage.dart';
 
+Future<String> getDownloadsPath() async {
+  Directory? downloadsDir;
+
+  if (Platform.isAndroid) {
+    downloadsDir = Directory('/storage/emulated/0/Download');
+  } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    downloadsDir = Directory('${Platform.environment['USERPROFILE']}\\Downloads');
+  }
+
+  if (downloadsDir != null && await downloadsDir.exists()) {
+    return downloadsDir.path;
+  } else {
+    // fallback ไปใช้โฟลเดอร์ที่ Flutter รองรับ
+    return (await getApplicationDocumentsDirectory()).path;
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // เริ่มต้น Hive และเปิดฐานข้อมูล
-  await Hive.initFlutter();
+  // ใช้ Downloads Path
+  String hivePath = await getDownloadsPath();
+  await Hive.initFlutter(hivePath); // ให้ Hive ใช้ Path ใน Downloads
+
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(CategoryModelAdapter());
 
