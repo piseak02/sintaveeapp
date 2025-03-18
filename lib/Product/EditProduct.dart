@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../Database/product_model.dart';
 import '../Database/category_model.dart';
+import '../Bottoom_Navbar/bottom_navbar.dart';
 
 class EditProduct extends StatefulWidget {
   const EditProduct({super.key});
@@ -18,6 +19,8 @@ class _EditProductState extends State<EditProduct> {
   String selectedCategory = "ทั้งหมด";
   List<ProductModel> allProducts = [];
 
+  int _selectedIndex = 2; // ตั้งค่าให้แท็บเริ่มต้นอยู่ที่หน้า "เมนูหลัก"
+
   @override
   void initState() {
     super.initState();
@@ -29,20 +32,30 @@ class _EditProductState extends State<EditProduct> {
   /// โหลดข้อมูลสินค้าและหมวดหมู่จาก Hive
   void _loadData() {
     setState(() {
-      // โหลดหมวดหมู่จาก Hive และเพิ่ม "ทั้งหมด" ไว้เป็นตัวเลือกแรก
       categories = [
         "ทั้งหมด",
         ...categoryBox!.values.map((c) => c.name).toList()
       ];
-
-      // โหลดสินค้า
       allProducts = productBox!.values.toList();
     });
   }
 
+  /// ฟังก์ชันเปลี่ยนหน้าใน BottomNavBar
+  void onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // นำทางไปยังหน้าต่าง ๆ ตามปุ่มที่กด
+    if (index == 0) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else if (index == 1) {
+      Navigator.pushNamed(context, '/account');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // กรองสินค้าโดยดูจากหมวดหมู่ที่เลือก
     List<ProductModel> filteredProducts = selectedCategory == "ทั้งหมด"
         ? allProducts
         : allProducts
@@ -105,7 +118,6 @@ class _EditProductState extends State<EditProduct> {
                                     color: Colors.orange,
                                     fontWeight: FontWeight.bold)),
                             onTap: () {
-                              // สามารถเพิ่มโค้ดแก้ไขสินค้าเมื่อกดได้
                               print("แก้ไข: ${product.name}");
                             },
                           ),
@@ -115,6 +127,12 @@ class _EditProductState extends State<EditProduct> {
             ),
           ],
         ),
+      ),
+
+      /// แถบเมนูด้านล่าง
+      bottomNavigationBar: BottomNavbar(
+        currentIndex: _selectedIndex,
+        onTap: onItemTapped,
       ),
     );
   }

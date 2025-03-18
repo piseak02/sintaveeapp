@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/AccountPageApp/account_page.dart';
+import '../HomepageApp/my_homepage.dart';
 
 class BottomNavbar extends StatelessWidget {
   const BottomNavbar(
@@ -9,7 +10,14 @@ class BottomNavbar extends StatelessWidget {
   final Function(int) onTap;
 
   void _handleNavigation(int index, BuildContext context) {
-    if (index == 1) {
+    if (index == 0) {
+      // นำทางไปหน้า MyHomepage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => MyHomepage()),
+      );
+    } else if (index == 1) {
+      // นำทางไปหน้า Myaccount
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => Myaccount()),
