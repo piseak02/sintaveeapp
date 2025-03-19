@@ -28,14 +28,16 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
-import 'Product/add_product.dart';
 import 'HomepageApp/my_homepage.dart';
 
 Future<String> getDownloadsPath() async {
   Directory? downloadsDir;
 
   if (Platform.isAndroid) {
-    downloadsDir = Directory('/storage/emulated/0/Download');
+    Directory? externalDir = await getExternalStorageDirectory();
+    if (externalDir != null) {
+      downloadsDir = Directory('${externalDir.path}/data'); // บันทึกใน Android/data/<package_name>/files/data
+    }
   } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     downloadsDir = Directory('${Platform.environment['USERPROFILE']}\\Downloads');
   }
@@ -47,6 +49,7 @@ Future<String> getDownloadsPath() async {
     return (await getApplicationDocumentsDirectory()).path;
   }
 }
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
