@@ -22,7 +22,8 @@ class _MyAddProductState extends State<MyAddProduct> {
   String? _selectedCategory;
 
   final TextEditingController _productNameController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _Retail_priceController = TextEditingController();
+  final TextEditingController _Wholesale_priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _barcodeController = TextEditingController();
@@ -44,7 +45,8 @@ class _MyAddProductState extends State<MyAddProduct> {
 
   void _addProduct() {
     final name = _productNameController.text.trim();
-    final price = double.tryParse(_priceController.text) ?? 0;
+    final Retail_price = double.tryParse(_Retail_priceController.text) ?? 0;
+    final Wholesale_price = double.tryParse(_Wholesale_priceController.text) ?? 0;
     final quantity = int.tryParse(_quantityController.text) ?? 0;
     final expiryDate = _expiryDateController.text.trim();
     final category = _selectedCategory ?? "ไม่ระบุ";
@@ -53,7 +55,8 @@ class _MyAddProductState extends State<MyAddProduct> {
     if (name.isNotEmpty) {
       final newProduct = ProductModel(
         name: name,
-        price: price,
+        Retail_price: Retail_price,
+        Wholesale_price: Wholesale_price,
         quantity: quantity,
         expiryDate: expiryDate,
         category: category,
@@ -70,9 +73,11 @@ class _MyAddProductState extends State<MyAddProduct> {
 
   void _clearFields() {
     _productNameController.clear();
-    _priceController.clear();
+    _Retail_priceController.clear();
+    _Wholesale_priceController.clear();
     _quantityController.clear();
     _expiryDateController.clear();
+    _barcodeController.clear();
     setState(() {
       _selectedCategory = null;
     });
@@ -273,8 +278,12 @@ class _MyAddProductState extends State<MyAddProduct> {
                             controller: _productNameController,
                             label: "ชื่อสินค้า"),
                         _buildTextField(
-                            controller: _priceController,
-                            label: "ราคา",
+                            controller: _Retail_priceController,
+                            label: "ราคาปลีก",
+                            keyboardType: TextInputType.number),
+                        _buildTextField(
+                            controller: _Wholesale_priceController,
+                            label: "ราคาส่ง",
                             keyboardType: TextInputType.number),
                         _buildTextField(
                             controller: _quantityController,

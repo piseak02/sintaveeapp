@@ -4,6 +4,7 @@ import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_cont
 import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import '../Bottoom_Navbar/bottom_navbar.dart';
+import '../Product/EditProductPage.dart';
 
 class EditProduct extends StatefulWidget {
   const EditProduct({super.key});
@@ -15,7 +16,7 @@ class EditProduct extends StatefulWidget {
 class _EditProductState extends State<EditProduct> {
   Box<ProductModel>? productBox;
   Box<CategoryModel>? categoryBox;
-
+  int? _expandedIndex; // เก็บ index ของการ์ดที่ถูกกด
   List<String> categories = ["ทั้งหมด"];
   String selectedCategory = "ทั้งหมด";
   List<ProductModel> allProducts = [];
@@ -41,18 +42,146 @@ class _EditProductState extends State<EditProduct> {
     });
   }
 
-  /// ฟังก์ชันเปลี่ยนหน้าใน BottomNavBar
-  void onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  /// ฟังก์ชันแสดง Dialog สำหรับค้นหาสินค้า
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String query = '';
+        List<ProductModel> searchResults = allProducts.toList();
 
-    // นำทางไปยังหน้าต่าง ๆ ตามปุ่มที่กด
-    if (index == 0) {
-      Navigator.pushReplacementNamed(context, '/home');
-    } else if (index == 1) {
-      Navigator.pushNamed(context, '/account');
-    }
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            void handleSearch(String value) {
+              query = value;
+              searchResults = query.isEmpty
+                  ? allProducts
+                  : allProducts
+                      .where((product) => product.name
+                          .toLowerCase()
+                          .contains(query.toLowerCase()))
+                      .toList();
+              setStateDialog(() {});
+            }
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // หัวข้อ
+                    const Text(
+                      "ค้นหาสินค้า",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ช่องค้นหา
+                    TextField(
+                      onChanged: handleSearch,
+                      decoration: InputDecoration(
+                        labelText: "พิมพ์ชื่อสินค้า",
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // รายการผลลัพธ์การค้นหา
+                    SizedBox(
+                      width: double.maxFinite,
+                      height: 300,
+                      child: searchResults.isEmpty
+                          ? const Center(child: Text("ไม่พบสินค้า"))
+                          : ListView.builder(
+                              itemCount: searchResults.length,
+                              itemBuilder: (context, index) {
+                                var product = searchResults[index];
+                                return Card(
+                                  elevation: 2,
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 5),
+                                  child: ListTile(
+                                    title: Text(product.name),
+                                    subtitle:
+                                        Text("หมวดหมู่: ${product.category}"),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // ปุ่มแก้ไข (ดินสอ)
+                                        IconButton(
+                                          icon: const Icon(Icons.edit,
+                                              color: Colors.blue),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    EditProductPage(
+                                                  product: product,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        // ปุ่มลบ (ถังขยะ)
+                                        IconButton(
+                                          icon: const Icon(Icons.delete,
+                                              color: Colors.red),
+                                          onPressed: () {
+                                            int hiveIndex = productBox!.values
+                                                .toList()
+                                                .indexOf(product);
+                                            if (hiveIndex != -1) {
+                                              productBox!.deleteAt(hiveIndex);
+                                              setState(() {
+                                                allProducts =
+                                                    productBox!.values.toList();
+                                              });
+                                              setStateDialog(() {
+                                                searchResults.removeAt(index);
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ปุ่มปิด
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "ปิด",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -71,7 +200,7 @@ class _EditProductState extends State<EditProduct> {
             constraints: const BoxConstraints(maxWidth: 500),
             child: Column(
               children: [
-                // ส่วนหัวแสดงชื่อ "เพิ่มรายการสินค้า"
+                // ส่วนหัว
                 TPrimaryHeaderContainer(
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
@@ -85,20 +214,35 @@ class _EditProductState extends State<EditProduct> {
                     ),
                   ),
                 ),
-                // ส่วนเนื้อหาหลัก
+
+                // ส่วนเนื้อหา
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Dropdown สำหรับเลือกหมวดหมู่
-                        const Text(
-                          "เลือกหมวดหมู่:",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                        // แถวสำหรับ Label + ปุ่มค้นหา
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "เลือกหมวดหมู่:",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.search,
+                                  color: Colors.orange),
+                              onPressed: _showSearchDialog,
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 10),
+
+                        // Dropdown สำหรับเลือกหมวดหมู่
                         DropdownButton<String>(
                           isExpanded: true,
                           value: selectedCategory,
@@ -114,15 +258,19 @@ class _EditProductState extends State<EditProduct> {
                             );
                           }).toList(),
                         ),
+
                         const SizedBox(height: 20),
+
                         // แสดงรายการสินค้า
                         const Text(
                           "รายการสินค้า:",
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 10),
-                        // ใช้ Expanded ครอบ ListView เพื่อให้แสดงผลเต็มพื้นที่ที่เหลือ
+
                         Expanded(
                           child: filteredProducts.isEmpty
                               ? const Center(
@@ -131,29 +279,172 @@ class _EditProductState extends State<EditProduct> {
                                   itemCount: filteredProducts.length,
                                   itemBuilder: (context, index) {
                                     var product = filteredProducts[index];
-                                    return Card(
-                                      margin: const EdgeInsets.symmetric(
-                                          vertical: 5),
-                                      child: ListTile(
-                                        title: Text(
-                                          product.name,
-                                          style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600),
+                                    bool isExpanded = _expandedIndex ==
+                                        index; // เช็คว่าการ์ดนี้ถูกกดอยู่หรือไม่
+
+                                    return Column(
+                                      children: [
+                                        // การ์ดหลัก
+                                        Card(
+                                          elevation: 2,
+                                          margin: const EdgeInsets.symmetric(
+                                              vertical: 5),
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                // หากกดซ้ำ ให้ปิดการขยาย
+                                                _expandedIndex =
+                                                    isExpanded ? null : index;
+                                              });
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  // แสดงชื่อสินค้า + ราคาปลีก
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        product.name,
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        "${product.Retail_price} บาท",
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          color: Colors.orange,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 5),
+
+                                                  // แสดงหมวดหมู่ + ราคาส่ง
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        "หมวดหมู่: ${product.category}",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        "ราคาส่ง: ${product.Wholesale_price} บาท",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                        subtitle: Text(
-                                            "หมวดหมู่: ${product.category}"),
-                                        trailing: Text(
-                                          "${product.price} บาท",
-                                          style: const TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        onTap: () {
-                                          print("แก้ไข: ${product.name}");
-                                        },
-                                      ),
+
+                                        // แสดงรายละเอียดเพิ่มเติมเมื่อการ์ดถูกกด
+                                        if (isExpanded)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 12, right: 12, bottom: 5),
+                                            child: Container(
+                                              width: double
+                                                  .infinity, // ให้ขยายเต็มการ์ด
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey
+                                                    .shade200, // สีพื้นหลังเข้มกว่าการ์ดหลัก
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color: Colors.grey
+                                                        .shade400), // เส้นขอบสีเข้มขึ้น
+                                              ),
+                                              padding: const EdgeInsets.all(12),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      const Icon(
+                                                          Icons.inventory,
+                                                          size: 18,
+                                                          color: Colors
+                                                              .black54), // ไอคอนจำนวนสินค้า
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        "จำนวน: ${product.quantity}",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Row(
+                                                    children: [
+                                                      const Icon(
+                                                          Icons.calendar_today,
+                                                          size: 18,
+                                                          color: Colors
+                                                              .black54), // ไอคอนวันหมดอายุ
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        "วันหมดอายุ: ${product.expiryDate ?? 'ไม่มีข้อมูล'}",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Row(
+                                                    children: [
+                                                      const Icon(Icons.qr_code,
+                                                          size: 18,
+                                                          color: Colors
+                                                              .black54), // ไอคอนบาร์โค้ด
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        "บาร์โค้ด: ${product.barcode ?? '-'}",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Divider(
+                                                      thickness: 1,
+                                                      color:
+                                                          Colors.grey.shade500),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     );
                                   },
                                 ),
@@ -167,10 +458,13 @@ class _EditProductState extends State<EditProduct> {
           ),
         ),
       ),
-      // แถบเมนูด้านล่าง
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
-        onTap: onItemTapped,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
       ),
     );
   }

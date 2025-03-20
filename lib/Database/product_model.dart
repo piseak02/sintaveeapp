@@ -8,27 +8,31 @@ class ProductModel {
   final String name;
 
   @HiveField(1)
-  final double price;
+  final double Retail_price;
 
   @HiveField(2)
-  final int quantity;
+  final double Wholesale_price;
 
   @HiveField(3)
-  final String? expiryDate; // ✅ เปลี่ยนจาก String เป็น String?
+  final int quantity;
 
   @HiveField(4)
-  final String category;
+  final String? expiryDate;
 
   @HiveField(5)
-  final String? barcode; // ✅ เปลี่ยนจาก String เป็น String?
+  final String category;
+
+  @HiveField(6)
+  final String? barcode;
 
   ProductModel({
     required this.name,
-    required this.price,
+    required this.Retail_price,
+    required this.Wholesale_price,
     required this.quantity,
-    this.expiryDate, // ✅ ไม่บังคับต้องมีค่า
+    this.expiryDate,
     required this.category,
-    this.barcode, // ✅ ไม่บังคับต้องมีค่า
+    this.barcode,
   });
 
   get key => null;
