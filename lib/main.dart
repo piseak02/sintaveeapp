@@ -36,10 +36,12 @@ Future<String> getDownloadsPath() async {
   if (Platform.isAndroid) {
     Directory? externalDir = await getExternalStorageDirectory();
     if (externalDir != null) {
-      downloadsDir = Directory('${externalDir.path}/data'); // บันทึกใน Android/data/<package_name>/files/data
+      downloadsDir = Directory(
+          '${externalDir.path}/data'); // บันทึกใน Android/data/<package_name>/files/data
     }
   } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    downloadsDir = Directory('${Platform.environment['USERPROFILE']}\\Downloads');
+    downloadsDir =
+        Directory('${Platform.environment['USERPROFILE']}\\Downloads');
   }
 
   if (downloadsDir != null && await downloadsDir.exists()) {
@@ -49,7 +51,6 @@ Future<String> getDownloadsPath() async {
     return (await getApplicationDocumentsDirectory()).path;
   }
 }
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

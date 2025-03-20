@@ -42,6 +42,40 @@ class _EditProductState extends State<EditProduct> {
     });
   }
 
+  /// ฟังก์ชันลบสินค้า พร้อมยืนยันก่อนลบ
+  void _deleteProduct(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("ยืนยันการลบ"),
+          content: Text("คุณต้องการลบสินค้า \"${product.name}\" หรือไม่?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // ปิด Dialog
+              child: const Text("ยกเลิก"),
+            ),
+            TextButton(
+              onPressed: () {
+                // ลบสินค้าจาก Hive
+                int hiveIndex = productBox!.values.toList().indexOf(product);
+                if (hiveIndex != -1) {
+                  productBox!.deleteAt(hiveIndex);
+                  // อัปเดตรายการสินค้าใน State
+                  setState(() {
+                    allProducts = productBox!.values.toList();
+                  });
+                }
+                Navigator.pop(context); // ปิด Dialog หลังลบเสร็จ
+              },
+              child: const Text("ลบ", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// ฟังก์ชันแสดง Dialog สำหรับค้นหาสินค้า
   void _showSearchDialog() {
     showDialog(
@@ -120,7 +154,8 @@ class _EditProductState extends State<EditProduct> {
                                         // ปุ่มแก้ไข (ดินสอ)
                                         IconButton(
                                           icon: const Icon(Icons.edit,
-                                              color: Colors.blue),
+                                              color: Color.fromARGB(
+                                                  255, 12, 12, 12)),
                                           onPressed: () {
                                             Navigator.pop(context);
                                             Navigator.push(
@@ -137,7 +172,8 @@ class _EditProductState extends State<EditProduct> {
                                         // ปุ่มลบ (ถังขยะ)
                                         IconButton(
                                           icon: const Icon(Icons.delete,
-                                              color: Colors.red),
+                                              color:
+                                                  Color.fromARGB(255, 5, 5, 5)),
                                           onPressed: () {
                                             int hiveIndex = productBox!.values
                                                 .toList()
@@ -194,7 +230,7 @@ class _EditProductState extends State<EditProduct> {
 
     return Scaffold(
       body: Container(
-        color: Colors.white,
+        color: const Color.fromARGB(255, 255, 255, 255),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
@@ -287,6 +323,8 @@ class _EditProductState extends State<EditProduct> {
                                         // การ์ดหลัก
                                         Card(
                                           elevation: 2,
+                                          color: Colors
+                                              .white, // ✅ ตั้งค่าพื้นหลังของการ์ดให้ขาว
                                           margin: const EdgeInsets.symmetric(
                                               vertical: 5),
                                           child: InkWell(
@@ -321,7 +359,8 @@ class _EditProductState extends State<EditProduct> {
                                                         "${product.Retail_price} บาท",
                                                         style: const TextStyle(
                                                           fontSize: 16,
-                                                          color: Colors.orange,
+                                                          color: Color.fromARGB(
+                                                              255, 7, 7, 7),
                                                           fontWeight:
                                                               FontWeight.bold,
                                                         ),
@@ -362,34 +401,30 @@ class _EditProductState extends State<EditProduct> {
                                         if (isExpanded)
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                                left: 12, right: 12, bottom: 5),
+                                                left: 0, right: 0, bottom: 5),
                                             child: Container(
                                               width: double
-                                                  .infinity, // ให้ขยายเต็มการ์ด
+                                                  .infinity, // ✅ ให้ขยายเต็มการ์ด
                                               decoration: BoxDecoration(
-                                                color: Colors.grey
-                                                    .shade200, // สีพื้นหลังเข้มกว่าการ์ดหลัก
+                                                color: const Color.fromARGB(
+                                                    255, 238, 232, 232),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 border: Border.all(
-                                                    color: Colors.grey
-                                                        .shade400), // เส้นขอบสีเข้มขึ้น
+                                                  color: const Color.fromARGB(
+                                                      255, 187, 186, 186),
+                                                ),
                                               ),
                                               padding: const EdgeInsets.all(12),
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
+                                                  // ----- แสดงรายละเอียดสินค้า -----
                                                   Row(
                                                     children: [
-                                                      const Icon(
-                                                          Icons.inventory,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนจำนวนสินค้า
-                                                      const SizedBox(width: 8),
                                                       Text(
-                                                        "จำนวน: ${product.quantity}",
+                                                        "จำนวน: ${product.quantity} ",
                                                         style: const TextStyle(
                                                           fontSize: 14,
                                                           fontWeight:
@@ -401,12 +436,6 @@ class _EditProductState extends State<EditProduct> {
                                                   const SizedBox(height: 8),
                                                   Row(
                                                     children: [
-                                                      const Icon(
-                                                          Icons.calendar_today,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนวันหมดอายุ
-                                                      const SizedBox(width: 8),
                                                       Text(
                                                         "วันหมดอายุ: ${product.expiryDate ?? 'ไม่มีข้อมูล'}",
                                                         style: const TextStyle(
@@ -420,11 +449,6 @@ class _EditProductState extends State<EditProduct> {
                                                   const SizedBox(height: 8),
                                                   Row(
                                                     children: [
-                                                      const Icon(Icons.qr_code,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนบาร์โค้ด
-                                                      const SizedBox(width: 8),
                                                       Text(
                                                         "บาร์โค้ด: ${product.barcode ?? '-'}",
                                                         style: const TextStyle(
@@ -440,6 +464,61 @@ class _EditProductState extends State<EditProduct> {
                                                       thickness: 1,
                                                       color:
                                                           Colors.grey.shade500),
+
+                                                  // ----- แถวปุ่มแก้ไขและลบ -----
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.end,
+                                                    children: [
+                                                      // ปุ่มแก้ไข (ดินสอ)
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.edit,
+                                                            color:
+                                                                Color.fromARGB(
+                                                                    255,
+                                                                    12,
+                                                                    12,
+                                                                    12)),
+                                                        onPressed: () {
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (context) =>
+                                                                  EditProductPage(
+                                                                      product:
+                                                                          product),
+                                                            ),
+                                                          ).then((result) {
+                                                            // ถ้า result เป็น true หมายถึงมีการอัปเดตสินค้า
+                                                            if (result ==
+                                                                true) {
+                                                              setState(() {
+                                                                _loadData();
+                                                              });
+                                                            }
+                                                          });
+                                                        },
+                                                      ),
+
+                                                      // ปุ่มลบ (ถังขยะ)
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                            Icons.delete,
+                                                            color:
+                                                                Color.fromARGB(
+                                                                    255,
+                                                                    5,
+                                                                    5,
+                                                                    5)),
+                                                        onPressed: () {
+                                                          // ✅ เรียกฟังก์ชันลบสินค้า (มีตัวอย่างด้านล่าง)
+                                                          _deleteProduct(
+                                                              product);
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ],
                                               ),
                                             ),

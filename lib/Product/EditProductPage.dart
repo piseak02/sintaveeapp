@@ -24,7 +24,8 @@ class _EditProductPageState extends State<EditProductPage> {
 
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _Retail_priceController = TextEditingController();
-  final TextEditingController _Wholesale_priceController = TextEditingController();
+  final TextEditingController _Wholesale_priceController =
+      TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _barcodeController = TextEditingController();
@@ -70,7 +71,7 @@ class _EditProductPageState extends State<EditProductPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("อัปเดตสินค้าสำเร็จ")),
       );
-      Navigator.pop(context); // ปิดหน้าหลังอัปเดต
+      Navigator.pop(context, true); // ส่งผลลัพธ์กลับไปว่าอัปเดตแล้ว
     }
   }
 
@@ -128,7 +129,8 @@ class _EditProductPageState extends State<EditProductPage> {
                       children: [
                         const Text(
                           "เลือกหมวดหมู่:",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
@@ -147,20 +149,31 @@ class _EditProductPageState extends State<EditProductPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        _buildTextField(controller: _productNameController, label: "ชื่อสินค้า"),
-                        _buildTextField(controller: _Retail_priceController, label: "ราคาปลีก"),
-                        _buildTextField(controller: _Wholesale_priceController, label: "ราคาส่ง"),
-                        _buildTextField(controller: _quantityController, label: "จำนวน"),
-                        _buildTextField(controller: _expiryDateController, label: "วันหมดอายุ"),
+                        _buildTextField(
+                            controller: _productNameController,
+                            label: "ชื่อสินค้า"),
+                        _buildTextField(
+                            controller: _Retail_priceController,
+                            label: "ราคาปลีก"),
+                        _buildTextField(
+                            controller: _Wholesale_priceController,
+                            label: "ราคาส่ง"),
+                        _buildTextField(
+                            controller: _quantityController, label: "จำนวน"),
+                        _buildTextField(
+                            controller: _expiryDateController,
+                            label: "วันหมดอายุ"),
                         TextFormField(
                           controller: _barcodeController,
                           decoration: InputDecoration(
                             labelText: "บาร์โค้ดสินค้า",
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
                             filled: true,
                             fillColor: Colors.white,
                             suffixIcon: IconButton(
-                              icon: Icon(Icons.qr_code_scanner, color: Colors.blue),
+                              icon: Icon(Icons.qr_code_scanner,
+                                  color: Colors.blue),
                               onPressed: _scanBarcode,
                             ),
                           ),
@@ -172,10 +185,13 @@ class _EditProductPageState extends State<EditProductPage> {
                             onPressed: _updateProduct,
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                               backgroundColor: Colors.orange,
                             ),
-                            child: Text("บันทึกการแก้ไข", style: TextStyle(fontSize: 16, color: Colors.white)),
+                            child: Text("บันทึกการแก้ไข",
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.white)),
                           ),
                         ),
                       ],
@@ -195,7 +211,8 @@ class _EditProductPageState extends State<EditProductPage> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label}) {
+  Widget _buildTextField(
+      {required TextEditingController controller, required String label}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
