@@ -16,10 +16,17 @@ class EditProduct extends StatefulWidget {
 class _EditProductState extends State<EditProduct> {
   Box<ProductModel>? productBox;
   Box<CategoryModel>? categoryBox;
+
   int? _expandedIndex; // เก็บ index ของการ์ดที่ถูกกด
   List<String> categories = ["ทั้งหมด"];
   String selectedCategory = "ทั้งหมด";
   List<ProductModel> allProducts = [];
+
+  /// สำหรับเก็บข้อความค้นหา
+  String searchQuery = "";
+
+  /// สำหรับควบคุมการแสดง/ซ่อน Dropdown
+  bool showDropdown = false;
 
   int _selectedIndex = 0; // ตั้งค่าให้แท็บเริ่มต้นอยู่ที่หน้า "เมนูหลัก"
 
@@ -42,155 +49,17 @@ class _EditProductState extends State<EditProduct> {
     });
   }
 
-  /// ฟังก์ชันแสดง Dialog สำหรับค้นหาสินค้า
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String query = '';
-        List<ProductModel> searchResults = allProducts.toList();
-
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            void handleSearch(String value) {
-              query = value;
-              searchResults = query.isEmpty
-                  ? allProducts
-                  : allProducts
-                      .where((product) => product.name
-                          .toLowerCase()
-                          .contains(query.toLowerCase()))
-                      .toList();
-              setStateDialog(() {});
-            }
-
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // หัวข้อ
-                    const Text(
-                      "ค้นหาสินค้า",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ช่องค้นหา
-                    TextField(
-                      onChanged: handleSearch,
-                      decoration: InputDecoration(
-                        labelText: "พิมพ์ชื่อสินค้า",
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // รายการผลลัพธ์การค้นหา
-                    SizedBox(
-                      width: double.maxFinite,
-                      height: 300,
-                      child: searchResults.isEmpty
-                          ? const Center(child: Text("ไม่พบสินค้า"))
-                          : ListView.builder(
-                              itemCount: searchResults.length,
-                              itemBuilder: (context, index) {
-                                var product = searchResults[index];
-                                return Card(
-                                  elevation: 2,
-                                  margin:
-                                      const EdgeInsets.symmetric(vertical: 5),
-                                  child: ListTile(
-                                    title: Text(product.name),
-                                    subtitle:
-                                        Text("หมวดหมู่: ${product.category}"),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // ปุ่มแก้ไข (ดินสอ)
-                                        IconButton(
-                                          icon: const Icon(Icons.edit,
-                                              color: Colors.blue),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    EditProductPage(
-                                                  product: product,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        // ปุ่มลบ (ถังขยะ)
-                                        IconButton(
-                                          icon: const Icon(Icons.delete,
-                                              color: Colors.red),
-                                          onPressed: () {
-                                            int hiveIndex = productBox!.values
-                                                .toList()
-                                                .indexOf(product);
-                                            if (hiveIndex != -1) {
-                                              productBox!.deleteAt(hiveIndex);
-                                              setState(() {
-                                                allProducts =
-                                                    productBox!.values.toList();
-                                              });
-                                              setStateDialog(() {
-                                                searchResults.removeAt(index);
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ปุ่มปิด
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          "ปิด",
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    List<ProductModel> filteredProducts = selectedCategory == "ทั้งหมด"
-        ? allProducts
-        : allProducts
-            .where((product) => product.category == selectedCategory)
-            .toList();
+    // กรองสินค้าตาม searchQuery + หมวดหมู่
+    List<ProductModel> filteredProducts = allProducts.where((product) {
+      final matchCategory = (selectedCategory == "ทั้งหมด")
+          ? true
+          : product.category == selectedCategory;
+      final matchSearch =
+          product.name.toLowerCase().contains(searchQuery.toLowerCase());
+      return matchCategory && matchSearch;
+    }).toList();
 
     return Scaffold(
       body: Container(
@@ -222,41 +91,88 @@ class _EditProductState extends State<EditProduct> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // แถวสำหรับ Label + ปุ่มค้นหา
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "เลือกหมวดหมู่:",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        // TextField สำหรับค้นหา
+                        TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            labelText: "ค้นหา...",
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.search,
-                                  color: Colors.orange),
-                              onPressed: _showSearchDialog,
-                            ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 10),
 
-                        // Dropdown สำหรับเลือกหมวดหมู่
-                        DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedCategory,
-                          onChanged: (newValue) {
-                            setState(() {
-                              selectedCategory = newValue!;
-                            });
-                          },
-                          items: categories.map((category) {
-                            return DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(category),
-                            );
-                          }).toList(),
+                        // ปุ่มตัวกรอง (Filter)
+                        // ปุ่มตัวกรอง (Filter)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              // กดแล้วให้แสดง Modal Bottom Sheet ขึ้นมา
+                              showModalBottomSheet(
+                                context: context,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(16)),
+                                ),
+                                builder: (BuildContext context) {
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Padding(
+                                        padding: EdgeInsets.all(16.0),
+                                        child: Text(
+                                          "เลือกหมวดหมู่",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
+
+                                      // แสดงรายการหมวดหมู่
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: categories.length,
+                                          itemBuilder: (context, index) {
+                                            final category = categories[index];
+                                            return ListTile(
+                                              title: Text(category),
+                                              onTap: () {
+                                                setState(() {
+                                                  selectedCategory = category;
+                                                });
+                                                // ปิด Bottom Sheet
+                                                Navigator.pop(context);
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            icon: const Icon(Icons.filter_list),
+                            label: Text("หมวดหมู่: $selectedCategory"),
+                            style: ElevatedButton.styleFrom(
+                              elevation: 2,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 20),
@@ -274,13 +190,13 @@ class _EditProductState extends State<EditProduct> {
                         Expanded(
                           child: filteredProducts.isEmpty
                               ? const Center(
-                                  child: Text("ไม่มีสินค้าในหมวดหมู่นี้"))
+                                  child: Text("ไม่มีสินค้าในหมวดหมู่นี้"),
+                                )
                               : ListView.builder(
                                   itemCount: filteredProducts.length,
                                   itemBuilder: (context, index) {
                                     var product = filteredProducts[index];
-                                    bool isExpanded = _expandedIndex ==
-                                        index; // เช็คว่าการ์ดนี้ถูกกดอยู่หรือไม่
+                                    bool isExpanded = _expandedIndex == index;
 
                                     return Column(
                                       children: [
@@ -288,7 +204,8 @@ class _EditProductState extends State<EditProduct> {
                                         Card(
                                           elevation: 2,
                                           margin: const EdgeInsets.symmetric(
-                                              vertical: 5),
+                                            vertical: 5,
+                                          ),
                                           child: InkWell(
                                             onTap: () {
                                               setState(() {
@@ -298,12 +215,13 @@ class _EditProductState extends State<EditProduct> {
                                               });
                                             },
                                             child: Padding(
-                                              padding: const EdgeInsets.all(12),
+                                              padding:
+                                                  const EdgeInsets.all(12.0),
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  // แสดงชื่อสินค้า + ราคาปลีก
+                                                  // ชื่อสินค้า + ราคาปลีก
                                                   Row(
                                                     mainAxisAlignment:
                                                         MainAxisAlignment
@@ -330,7 +248,7 @@ class _EditProductState extends State<EditProduct> {
                                                   ),
                                                   const SizedBox(height: 5),
 
-                                                  // แสดงหมวดหมู่ + ราคาส่ง
+                                                  // หมวดหมู่ + ราคาส่ง
                                                   Row(
                                                     mainAxisAlignment:
                                                         MainAxisAlignment
@@ -362,31 +280,34 @@ class _EditProductState extends State<EditProduct> {
                                         if (isExpanded)
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                                left: 12, right: 12, bottom: 5),
+                                              left: 12,
+                                              right: 12,
+                                              bottom: 5,
+                                            ),
                                             child: Container(
-                                              width: double
-                                                  .infinity, // ให้ขยายเต็มการ์ด
+                                              width: double.infinity,
                                               decoration: BoxDecoration(
-                                                color: Colors.grey
-                                                    .shade200, // สีพื้นหลังเข้มกว่าการ์ดหลัก
+                                                color: Colors.grey.shade200,
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 border: Border.all(
-                                                    color: Colors.grey
-                                                        .shade400), // เส้นขอบสีเข้มขึ้น
+                                                  color: Colors.grey.shade400,
+                                                ),
                                               ),
-                                              padding: const EdgeInsets.all(12),
+                                              padding:
+                                                  const EdgeInsets.all(12.0),
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
+                                                  // จำนวน
                                                   Row(
                                                     children: [
                                                       const Icon(
-                                                          Icons.inventory,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนจำนวนสินค้า
+                                                        Icons.inventory,
+                                                        size: 18,
+                                                        color: Colors.black54,
+                                                      ),
                                                       const SizedBox(width: 8),
                                                       Text(
                                                         "จำนวน: ${product.quantity}",
@@ -399,13 +320,14 @@ class _EditProductState extends State<EditProduct> {
                                                     ],
                                                   ),
                                                   const SizedBox(height: 8),
+                                                  // วันหมดอายุ
                                                   Row(
                                                     children: [
                                                       const Icon(
-                                                          Icons.calendar_today,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนวันหมดอายุ
+                                                        Icons.calendar_today,
+                                                        size: 18,
+                                                        color: Colors.black54,
+                                                      ),
                                                       const SizedBox(width: 8),
                                                       Text(
                                                         "วันหมดอายุ: ${product.expiryDate ?? 'ไม่มีข้อมูล'}",
@@ -418,12 +340,14 @@ class _EditProductState extends State<EditProduct> {
                                                     ],
                                                   ),
                                                   const SizedBox(height: 8),
+                                                  // บาร์โค้ด
                                                   Row(
                                                     children: [
-                                                      const Icon(Icons.qr_code,
-                                                          size: 18,
-                                                          color: Colors
-                                                              .black54), // ไอคอนบาร์โค้ด
+                                                      const Icon(
+                                                        Icons.qr_code,
+                                                        size: 18,
+                                                        color: Colors.black54,
+                                                      ),
                                                       const SizedBox(width: 8),
                                                       Text(
                                                         "บาร์โค้ด: ${product.barcode ?? '-'}",
@@ -437,9 +361,59 @@ class _EditProductState extends State<EditProduct> {
                                                   ),
                                                   const SizedBox(height: 12),
                                                   Divider(
-                                                      thickness: 1,
-                                                      color:
-                                                          Colors.grey.shade500),
+                                                    thickness: 1,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                  // ปุ่มแก้ไข + ลบ ย้ายมาไว้ในนี้
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.end,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                          color: Colors.blue,
+                                                        ),
+                                                        onPressed: () {
+                                                          // ไปหน้าแก้ไขสินค้า
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (context) =>
+                                                                  EditProductPage(
+                                                                product:
+                                                                    product,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                        ),
+                                                        onPressed: () {
+                                                          int hiveIndex =
+                                                              productBox!.values
+                                                                  .toList()
+                                                                  .indexOf(
+                                                                      product);
+                                                          if (hiveIndex != -1) {
+                                                            productBox!
+                                                                .deleteAt(
+                                                                    hiveIndex);
+                                                            setState(() {
+                                                              allProducts =
+                                                                  productBox!
+                                                                      .values
+                                                                      .toList();
+                                                            });
+                                                          }
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -458,6 +432,8 @@ class _EditProductState extends State<EditProduct> {
           ),
         ),
       ),
+
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
         onTap: (index) {
