@@ -4,6 +4,8 @@ import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class MyAddProduct extends StatefulWidget {
   const MyAddProduct({super.key});
@@ -23,10 +25,12 @@ class _MyAddProductState extends State<MyAddProduct> {
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
+  final TextEditingController _barcodeController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _requestCameraPermission(); // ✅ ขออนุญาตกล้องเมื่อเปิดหน้า
     productBox = Hive.box<ProductModel>('products');
     categoryBox = Hive.box<CategoryModel>('categories');
     _loadCategories();
@@ -44,6 +48,7 @@ class _MyAddProductState extends State<MyAddProduct> {
     final quantity = int.tryParse(_quantityController.text) ?? 0;
     final expiryDate = _expiryDateController.text.trim();
     final category = _selectedCategory ?? "ไม่ระบุ";
+    final barcode = _barcodeController.text.trim(); // ✅ เพิ่มค่า barcode
 
     if (name.isNotEmpty) {
       final newProduct = ProductModel(
@@ -52,6 +57,7 @@ class _MyAddProductState extends State<MyAddProduct> {
         quantity: quantity,
         expiryDate: expiryDate,
         category: category,
+        barcode: barcode, // ✅ บันทึกบาร์โค้ด
       );
 
       productBox!.add(newProduct);
@@ -173,6 +179,28 @@ class _MyAddProductState extends State<MyAddProduct> {
     });
   }
 
+  Future<void> _scanBarcode() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
+    );
+
+    if (result != null && result != '-1') {
+      setState(() {
+        _barcodeController.text = result;
+      });
+    }
+  }
+
+  Future<void> _requestCameraPermission() async {
+    var status = await Permission.camera.request();
+    if (status.isGranted) {
+      print("✅ อนุญาตใช้กล้องแล้ว");
+    } else {
+      print("❌ ปฏิเสธการใช้กล้อง");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -254,8 +282,26 @@ class _MyAddProductState extends State<MyAddProduct> {
                             keyboardType: TextInputType.number),
                         _buildTextField(
                             controller: _expiryDateController,
-                            label: "วันหมดอายุ (YYYY-MM-DD)",
+                            label: "วันหมดอายุ (วัน-เดือน-ปี)",
                             keyboardType: TextInputType.datetime),
+                        TextFormField(
+                          controller: _barcodeController,
+                          decoration: InputDecoration(
+                            labelText: "บาร์โค้ดสินค้า",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            suffixIcon: IconButton(
+                              // ✅ ปุ่มสแกนอยู่ในช่องกรอก
+                              icon: Icon(Icons.qr_code_scanner,
+                                  color: Colors.blue),
+                              onPressed:
+                                  _scanBarcode, // ✅ เรียกฟังก์ชันสแกนบาร์โค้ด
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         SizedBox(
                           width: double.infinity,

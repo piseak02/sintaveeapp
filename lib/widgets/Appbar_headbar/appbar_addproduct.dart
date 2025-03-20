@@ -6,7 +6,7 @@ class AppbarAddProduct extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text("เพิ่มรายการสินค้า"),
+      title: Text(""),
       backgroundColor: Colors.orange,
     );
   }

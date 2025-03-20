@@ -14,16 +14,22 @@ class ProductModel {
   final int quantity;
 
   @HiveField(3)
-  final String expiryDate;
+  final String? expiryDate; // ✅ เปลี่ยนจาก String เป็น String?
 
   @HiveField(4)
   final String category;
+
+  @HiveField(5)
+  final String? barcode; // ✅ เปลี่ยนจาก String เป็น String?
 
   ProductModel({
     required this.name,
     required this.price,
     required this.quantity,
-    required this.expiryDate,
+    this.expiryDate, // ✅ ไม่บังคับต้องมีค่า
     required this.category,
+    this.barcode, // ✅ ไม่บังคับต้องมีค่า
   });
+
+  get key => null;
 }

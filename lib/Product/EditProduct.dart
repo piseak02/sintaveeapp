@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import '../Bottoom_Navbar/bottom_navbar.dart';
@@ -19,7 +20,7 @@ class _EditProductState extends State<EditProduct> {
   String selectedCategory = "ทั้งหมด";
   List<ProductModel> allProducts = [];
 
-  int _selectedIndex = 2; // ตั้งค่าให้แท็บเริ่มต้นอยู่ที่หน้า "เมนูหลัก"
+  int _selectedIndex = 0; // ตั้งค่าให้แท็บเริ่มต้นอยู่ที่หน้า "เมนูหลัก"
 
   @override
   void initState() {
@@ -63,73 +64,110 @@ class _EditProductState extends State<EditProduct> {
             .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("แก้ไขสินค้า"),
-        backgroundColor: Colors.orange,
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Dropdown สำหรับเลือกหมวดหมู่
-            Text("เลือกหมวดหมู่:",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            DropdownButton<String>(
-              isExpanded: true,
-              value: selectedCategory,
-              onChanged: (newValue) {
-                setState(() {
-                  selectedCategory = newValue!;
-                });
-              },
-              items: categories.map((category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 20),
-
-            /// แสดงรายการสินค้า
-            Text("รายการสินค้า:",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-
-            Expanded(
-              child: filteredProducts.isEmpty
-                  ? Center(child: Text("ไม่มีสินค้าในหมวดหมู่นี้"))
-                  : ListView.builder(
-                      itemCount: filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        var product = filteredProducts[index];
-                        return Card(
-                          margin: EdgeInsets.symmetric(vertical: 5),
-                          child: ListTile(
-                            title: Text(product.name,
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w600)),
-                            subtitle: Text("หมวดหมู่: ${product.category}"),
-                            trailing: Text("${product.price} บาท",
-                                style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.orange,
-                                    fontWeight: FontWeight.bold)),
-                            onTap: () {
-                              print("แก้ไข: ${product.name}");
-                            },
-                          ),
-                        );
-                      },
+      body: Container(
+        color: Colors.white,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              children: [
+                // ส่วนหัวแสดงชื่อ "เพิ่มรายการสินค้า"
+                TPrimaryHeaderContainer(
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      "แก้ไขรายการสินค้า",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
+                  ),
+                ),
+                // ส่วนเนื้อหาหลัก
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dropdown สำหรับเลือกหมวดหมู่
+                        const Text(
+                          "เลือกหมวดหมู่:",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButton<String>(
+                          isExpanded: true,
+                          value: selectedCategory,
+                          onChanged: (newValue) {
+                            setState(() {
+                              selectedCategory = newValue!;
+                            });
+                          },
+                          items: categories.map((category) {
+                            return DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(category),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
+                        // แสดงรายการสินค้า
+                        const Text(
+                          "รายการสินค้า:",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        // ใช้ Expanded ครอบ ListView เพื่อให้แสดงผลเต็มพื้นที่ที่เหลือ
+                        Expanded(
+                          child: filteredProducts.isEmpty
+                              ? const Center(
+                                  child: Text("ไม่มีสินค้าในหมวดหมู่นี้"))
+                              : ListView.builder(
+                                  itemCount: filteredProducts.length,
+                                  itemBuilder: (context, index) {
+                                    var product = filteredProducts[index];
+                                    return Card(
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 5),
+                                      child: ListTile(
+                                        title: Text(
+                                          product.name,
+                                          style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                        subtitle: Text(
+                                            "หมวดหมู่: ${product.category}"),
+                                        trailing: Text(
+                                          "${product.price} บาท",
+                                          style: const TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        onTap: () {
+                                          print("แก้ไข: ${product.name}");
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-
-      /// แถบเมนูด้านล่าง
+      // แถบเมนูด้านล่าง
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
         onTap: onItemTapped,
