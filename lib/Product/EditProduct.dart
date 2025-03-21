@@ -82,19 +82,23 @@ class _EditProductState extends State<EditProduct> {
       context: context,
       builder: (context) {
         String query = '';
-        List<ProductModel> searchResults = allProducts.toList();
+        List<ProductModel> searchResults = []; // เริ่มต้นเป็นลิสต์ว่าง
 
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             void handleSearch(String value) {
               query = value;
-              searchResults = query.isEmpty
-                  ? allProducts
-                  : allProducts
-                      .where((product) => product.name
-                          .toLowerCase()
-                          .contains(query.toLowerCase()))
-                      .toList();
+              if (query.isEmpty) {
+                // ยังไม่พิมพ์ -> เคลียร์รายการ
+                searchResults = [];
+              } else {
+                // พิมพ์แล้ว -> ค้นหา
+                searchResults = allProducts
+                    .where((product) => product.name
+                        .toLowerCase()
+                        .contains(query.toLowerCase()))
+                    .toList();
+              }
               setStateDialog(() {});
             }
 
@@ -134,68 +138,77 @@ class _EditProductState extends State<EditProduct> {
                     SizedBox(
                       width: double.maxFinite,
                       height: 300,
-                      child: searchResults.isEmpty
-                          ? const Center(child: Text("ไม่พบสินค้า"))
-                          : ListView.builder(
-                              itemCount: searchResults.length,
-                              itemBuilder: (context, index) {
-                                var product = searchResults[index];
-                                return Card(
-                                  elevation: 2,
-                                  margin:
-                                      const EdgeInsets.symmetric(vertical: 5),
-                                  child: ListTile(
-                                    title: Text(product.name),
-                                    subtitle:
-                                        Text("หมวดหมู่: ${product.category}"),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // ปุ่มแก้ไข (ดินสอ)
-                                        IconButton(
-                                          icon: const Icon(Icons.edit,
-                                              color: Color.fromARGB(
-                                                  255, 12, 12, 12)),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    EditProductPage(
-                                                  product: product,
-                                                ),
-                                              ),
-                                            );
-                                          },
+                      child: query.isEmpty
+                          // 1) ยังไม่ได้พิมพ์ -> แสดงข้อความ
+                          ? const Center(child: Text("ยังไม่ได้ค้นหา"))
+                          : searchResults.isEmpty
+                              // 2) พิมพ์แล้ว แต่ไม่พบสินค้า
+                              ? const Center(child: Text("ไม่พบสินค้า"))
+                              // 3) พิมพ์แล้ว และพบสินค้า
+                              : ListView.builder(
+                                  itemCount: searchResults.length,
+                                  itemBuilder: (context, index) {
+                                    var product = searchResults[index];
+                                    return Card(
+                                      elevation: 2,
+                                      margin: const EdgeInsets.symmetric(
+                                          vertical: 5),
+                                      child: ListTile(
+                                        title: Text(product.name),
+                                        subtitle: Text(
+                                            "หมวดหมู่: ${product.category}"),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // ปุ่มแก้ไข (ดินสอ)
+                                            IconButton(
+                                              icon: const Icon(Icons.edit,
+                                                  color: Color.fromARGB(
+                                                      255, 12, 12, 12)),
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        EditProductPage(
+                                                      product: product,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                            // ปุ่มลบ (ถังขยะ)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete,
+                                                  color: Color.fromARGB(
+                                                      255, 5, 5, 5)),
+                                              onPressed: () {
+                                                int hiveIndex = productBox!
+                                                    .values
+                                                    .toList()
+                                                    .indexOf(product);
+                                                if (hiveIndex != -1) {
+                                                  productBox!
+                                                      .deleteAt(hiveIndex);
+                                                  setState(() {
+                                                    allProducts = productBox!
+                                                        .values
+                                                        .toList();
+                                                  });
+                                                  setStateDialog(() {
+                                                    searchResults
+                                                        .removeAt(index);
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                          ],
                                         ),
-                                        // ปุ่มลบ (ถังขยะ)
-                                        IconButton(
-                                          icon: const Icon(Icons.delete,
-                                              color:
-                                                  Color.fromARGB(255, 5, 5, 5)),
-                                          onPressed: () {
-                                            int hiveIndex = productBox!.values
-                                                .toList()
-                                                .indexOf(product);
-                                            if (hiveIndex != -1) {
-                                              productBox!.deleteAt(hiveIndex);
-                                              setState(() {
-                                                allProducts =
-                                                    productBox!.values.toList();
-                                              });
-                                              setStateDialog(() {
-                                                searchResults.removeAt(index);
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                                      ),
+                                    );
+                                  },
+                                ),
                     ),
                     const SizedBox(height: 10),
 

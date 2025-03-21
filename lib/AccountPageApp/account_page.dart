@@ -9,7 +9,7 @@ class Myaccount extends StatefulWidget {
 }
 
 class _MyaccountState extends State<Myaccount> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 1;
 
   void onItemTapped(int index) {
     setState(() {

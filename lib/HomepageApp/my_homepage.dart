@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:sintaveeapp/Product/EditProduct.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
+import 'package:sintaveeapp/Product/list_product.dart';
+import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 
 class MyHomepage extends StatefulWidget {
   const MyHomepage({super.key});
@@ -114,8 +116,9 @@ class _MyHomepagaState extends State<MyHomepage> {
     Widget _buildShortcut({required IconData icon, required String title, required BuildContext context}) {
     Map<String, Widget> routes = {
       "แก้ไขรายการ": EditProduct(),
-      "เพิ่มรายการ": MyAddProduct(), // สมมติว่ามีหน้า AddProduct
-      // "แสดงรายการ": ShowProduct(), // สมมติว่ามีหน้า ShowProduct
+      "เพิ่มรายการ": MyAddProduct(),
+      "แสดงรายการ": List_Product(),
+      "คำนวนราคา": SalePage(),
     };
 
     return GestureDetector(

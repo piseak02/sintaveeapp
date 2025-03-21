@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/AccountPageApp/account_page.dart';
 import '../HomepageApp/my_homepage.dart';
+import '../Bill_Page/BillSale_Page.dart';
 
 class BottomNavbar extends StatelessWidget {
   const BottomNavbar(
@@ -22,7 +23,13 @@ class BottomNavbar extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (context) => Myaccount()),
       );
-    } else {
+    } else if (index == 3) {
+      // นำทางไปหน้า Myaccount
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => BillSale_Page()),
+      );
+    }else {
       onTap(index);
     }
   }

@@ -28,6 +28,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
+import 'Database/bill_model.dart';
 import 'HomepageApp/my_homepage.dart';
 
 Future<String> getDownloadsPath() async {
@@ -61,9 +62,12 @@ void main() async {
 
   Hive.registerAdapter(ProductModelAdapter());
   Hive.registerAdapter(CategoryModelAdapter());
+  Hive.registerAdapter(BillItemAdapter());
+  Hive.registerAdapter(BillModelAdapter());
 
   await Hive.openBox<ProductModel>('products');
   await Hive.openBox<CategoryModel>('categories');
+  await Hive.openBox<BillModel>('bills');
 
   runApp(MyApp());
 }

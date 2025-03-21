@@ -6,6 +6,7 @@ import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_cont
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
 
 class MyAddProduct extends StatefulWidget {
   const MyAddProduct({super.key});
@@ -23,7 +24,8 @@ class _MyAddProductState extends State<MyAddProduct> {
 
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _Retail_priceController = TextEditingController();
-  final TextEditingController _Wholesale_priceController = TextEditingController();
+  final TextEditingController _Wholesale_priceController =
+      TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _barcodeController = TextEditingController();
@@ -46,7 +48,8 @@ class _MyAddProductState extends State<MyAddProduct> {
   void _addProduct() {
     final name = _productNameController.text.trim();
     final Retail_price = double.tryParse(_Retail_priceController.text) ?? 0;
-    final Wholesale_price = double.tryParse(_Wholesale_priceController.text) ?? 0;
+    final Wholesale_price =
+        double.tryParse(_Wholesale_priceController.text) ?? 0;
     final quantity = int.tryParse(_quantityController.text) ?? 0;
     final expiryDate = _expiryDateController.text.trim();
     final category = _selectedCategory ?? "ไม่ระบุ";
@@ -290,9 +293,11 @@ class _MyAddProductState extends State<MyAddProduct> {
                             label: "จำนวน",
                             keyboardType: TextInputType.number),
                         _buildTextField(
-                            controller: _expiryDateController,
-                            label: "วันหมดอายุ (วัน-เดือน-ปี)",
-                            keyboardType: TextInputType.datetime),
+                          controller: _expiryDateController,
+                          label: "วันหมดอายุ (วัน/เดือน/ปี)",
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [DateInputFormatter()],
+                        ),
                         TextFormField(
                           controller: _barcodeController,
                           decoration: InputDecoration(
@@ -345,16 +350,20 @@ class _MyAddProductState extends State<MyAddProduct> {
     );
   }
 
-  Widget _buildTextField(
-      {required TextEditingController controller,
-      required String label,
-      TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          decoration: _inputDecoration(label)),
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        decoration: _inputDecoration(label),
+      ),
     );
   }
 
@@ -364,5 +373,78 @@ class _MyAddProductState extends State<MyAddProduct> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
         fillColor: Colors.white);
+  }
+}
+
+// ✅ ตัวจัดรูปแบบวันที่แบบ dd/MM/yyyy
+class DateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    String digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    String formatted = '';
+
+    if (digitsOnly.length > 8) {
+      digitsOnly = digitsOnly.substring(0, 8); // ddMMyyyy
+    }
+
+    for (int i = 0; i < digitsOnly.length; i++) {
+      formatted += digitsOnly[i];
+      if (i == 1 || i == 3) {
+        formatted += '/';
+      }
+    }
+
+    // ล็อกค่าให้ถูกต้องถ้าครบ dd/MM/yyyy แล้ว
+    if (digitsOnly.length == 8) {
+      int day = int.parse(digitsOnly.substring(0, 2));
+      int month = int.parse(digitsOnly.substring(2, 4));
+      int year = int.parse(digitsOnly.substring(4, 8));
+
+      // ปรับเดือนถ้าเกิน 12
+      if (month > 12) {
+        month = 12;
+      } else if (month == 0) {
+        month = 1;
+      }
+
+      // ตรวจสอบจำนวนวันในเดือน
+      int maxDay = _daysInMonth(month, year);
+
+      if (day > maxDay) {
+        day = maxDay;
+      } else if (day == 0) {
+        day = 1;
+      }
+
+      // จัดข้อความใหม่หลังตรวจสอบ
+      final dd = day.toString().padLeft(2, '0');
+      final mm = month.toString().padLeft(2, '0');
+      final yyyy = year.toString();
+
+      formatted = '$dd/$mm/$yyyy';
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  /// ตรวจสอบจำนวนวันในเดือน (รองรับปีอธิกสุรทิน)
+  int _daysInMonth(int month, int year) {
+    if (month == 2) {
+      // กุมภาพันธ์
+      if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+        return 29;
+      }
+      return 28;
+    }
+    if ([4, 6, 9, 11].contains(month)) {
+      return 30;
+    }
+    return 31;
   }
 }
