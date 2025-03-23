@@ -3,5 +3,6 @@
     "C_Cpp.default.compilerPath": "d:\\FlutterProject\\sintaveeapp\\lib\\Homepage\\MyHomepage",
     "files.associations": {
         "myhomepage": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "D:/FlutterProject/sintaveeapp/linux"
 }

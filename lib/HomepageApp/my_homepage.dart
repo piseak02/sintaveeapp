@@ -4,6 +4,8 @@ import 'package:sintaveeapp/Product/EditProduct.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
 import 'package:sintaveeapp/Product/list_product.dart';
 import 'package:sintaveeapp/Sale_Page/sale_product.dart';
+import 'package:sintaveeapp/Product/Edit_Price_Product.dart';
+import 'package:sintaveeapp/Product/Edit_Stock_Product.dart';
 
 class MyHomepage extends StatefulWidget {
   const MyHomepage({super.key});
@@ -118,6 +120,8 @@ class _MyHomepagaState extends State<MyHomepage> {
       "แก้ไขรายการ": EditProduct(),
       "เพิ่มรายการ": MyAddProduct(),
       "แสดงรายการ": List_Product(),
+      "แก้ไขราคา": EditPriceProduct(),
+      "เพิ่มสต็อก": EditStockProduct(),
       "คำนวนราคา": SalePage(),
     };
 

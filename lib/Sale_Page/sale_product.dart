@@ -4,6 +4,7 @@ import '../Database/product_model.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../Database/bill_model.dart';
+import '../Bill_Page/bill_detail_page.dart'; // Import BillDetailPage
 
 /// Model สำหรับรายการขาย (SaleItem)
 class SaleItem {
@@ -11,17 +12,15 @@ class SaleItem {
   int saleQuantity;
 
   SaleItem({required this.product, required this.saleQuantity});
-
-  double get totalPrice => product.Retail_price * saleQuantity;
 }
 
-/// SearchDelegate สำหรับค้นหาสินค้าใน Hive
 class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
   final Box<ProductModel> productBox;
 
   ProductSearchDelegate(this.productBox);
 
   @override
+  String get searchFieldLabel => "ค้นหาสินค้า";
   List<Widget>? buildActions(BuildContext context) {
     return [
       IconButton(
@@ -45,6 +44,9 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
 
   @override
   Widget buildResults(BuildContext context) {
+    if (query.isEmpty) {
+      return Center(child: Text("ยังไม่ได้ค้นหา"));
+    }
     final results = productBox.values
         .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
@@ -66,6 +68,9 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
 
   @override
   Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return Center(child: Text("ยังไม่ได้ค้นหา"));
+    }
     final suggestions = productBox.values
         .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
@@ -87,7 +92,9 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
 }
 
 class SalePage extends StatefulWidget {
-  const SalePage({Key? key}) : super(key: key);
+  final String? initialBarcode; // 👈 เพิ่มตรงนี้
+
+  const SalePage({Key? key, this.initialBarcode}) : super(key: key);
 
   @override
   _SalePageState createState() => _SalePageState();
@@ -98,13 +105,32 @@ class _SalePageState extends State<SalePage> {
   List<SaleItem> _saleItems = [];
   late Box<BillModel> _billBox;
 
+  // Toggle flag สำหรับคำนวนราคาปลีก/ส่ง
+  bool _useWholesale = false;
+
   @override
-void initState() {
-  super.initState();
-  _requestCameraPermission();
-  _productBox = Hive.box<ProductModel>('products');
-  _billBox = Hive.box<BillModel>('bills'); // ✅ เปิด Box สำหรับ BillModel
-}
+  void initState() {
+    super.initState();
+    _requestCameraPermission();
+    _productBox = Hive.box<ProductModel>('products');
+    _billBox = Hive.box<BillModel>('bills');
+
+    if (widget.initialBarcode != null) {
+      _addProductToSale(widget.initialBarcode!);
+    }
+  }
+
+  /// คำนวณยอดรวมโดยใช้ราคาที่เลือก (ปลีกหรือส่ง)
+  double get _grandTotal {
+    double sum = 0.0;
+    for (var item in _saleItems) {
+      double price = _useWholesale
+          ? item.product.Wholesale_price
+          : item.product.Retail_price;
+      sum += price * item.saleQuantity;
+    }
+    return sum;
+  }
 
   /// ขออนุญาตใช้งานกล้อง
   Future<void> _requestCameraPermission() async {
@@ -162,17 +188,11 @@ void initState() {
     }
   }
 
-  /// ยอดรวม
-  double get _grandTotal {
-    double sum = 0.0;
-    for (var item in _saleItems) {
-      sum += item.totalPrice;
-    }
-    return sum;
-  }
-
-  /// สร้าง Card สำหรับแต่ละรายการขาย
+  /// สร้าง Card สำหรับแต่ละรายการขาย โดยคำนวณราคา (ปลีก/ส่ง) ตามที่เลือก
   Widget _buildSaleItemCard(SaleItem saleItem, int index) {
+    double price = _useWholesale
+        ? saleItem.product.Wholesale_price
+        : saleItem.product.Retail_price;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       elevation: 3,
@@ -191,18 +211,20 @@ void initState() {
                       fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 Text(
-                  'ราคารวม: ${saleItem.product.Retail_price * saleItem.saleQuantity}',
+                  'ราคารวม: ${price * saleItem.saleQuantity}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // แถวที่สอง: ราคาปลีกและปุ่มควบคุมจำนวนสินค้า
+            // แถวที่สอง: ราคาต่อหน่วยตามที่เลือก และปุ่มควบคุมจำนวนสินค้า
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("ราคาปลีก: ${saleItem.product.Retail_price}"),
+                Text(_useWholesale
+                    ? "ราคาส่ง: ${saleItem.product.Wholesale_price}"
+                    : "ราคาปลีก: ${saleItem.product.Retail_price}"),
                 Row(
                   children: [
                     IconButton(
@@ -230,107 +252,100 @@ void initState() {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            // แถวที่สาม: ราคาส่ง
-            Text("ราคาส่ง: ${saleItem.product.Wholesale_price}"),
           ],
         ),
       ),
     );
   }
 
-  /// Popup รับเงิน
+  /// Popup รับเงินและชำระเงิน (หลังจากชำระเงิน จะเปลี่ยนหน้าไปยัง BillDetailPage)
   void _showPaymentDialog() {
-  final moneyController = TextEditingController();
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("ชำระเงิน"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text("ยอดรวมสุทธิ: ${_grandTotal.toStringAsFixed(2)} บาท"),
-          const SizedBox(height: 16),
-          TextField(
-            controller: moneyController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: "จำนวนเงินที่รับ",
-              border: OutlineInputBorder(),
+    final moneyController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("ชำระเงิน"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("ยอดรวมสุทธิ: ${_grandTotal.toStringAsFixed(2)} บาท"),
+            const SizedBox(height: 16),
+            TextField(
+              controller: moneyController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "จำนวนเงินที่รับ",
+                border: OutlineInputBorder(),
+              ),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("ยกเลิก"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final double? pay = double.tryParse(moneyController.text);
+              if (pay == null || pay.isNaN) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
+                );
+              } else if (pay < _grandTotal) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("ยอดเงินไม่เพียงพอ")),
+                );
+              } else {
+                final change = pay - _grandTotal;
+                Navigator.pop(context); // ปิด Dialog
+
+                // สร้างรายการ BillItem โดยใช้ราคาที่เลือก (ปลีก/ส่ง)
+                List<BillItem> billItems = _saleItems.map((saleItem) {
+                  double price = _useWholesale
+                      ? saleItem.product.Wholesale_price
+                      : saleItem.product.Retail_price;
+                  return BillItem(
+                    productName: saleItem.product.name,
+                    price: price,
+                    quantity: saleItem.saleQuantity,
+                    discount: 0.0,
+                  );
+                }).toList();
+
+                // สร้าง BillModel ใหม่
+                final newBill = BillModel(
+                  billId: "BILL-${DateTime.now().millisecondsSinceEpoch}",
+                  billDate: DateTime.now(),
+                  items: billItems,
+                  totalDiscount: 0.0,
+                  netTotal: _grandTotal,
+                  moneyReceived: pay,
+                  change: change,
+                );
+
+                // บันทึกลง Hive
+                _billBox.add(newBill);
+
+                // เปลี่ยนหน้าไปที่ BillDetailPage ทันที
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => BillDetailPage(bill: newBill)),
+                );
+
+                // เคลียร์รายการขาย (ถ้าต้องการ)
+                setState(() {
+                  _saleItems.clear();
+                });
+              }
+            },
+            child: const Text("ชำระเงิน"),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("ยกเลิก"),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final double? pay = double.tryParse(moneyController.text);
-            if (pay == null || pay.isNaN) {
-              // ถ้ากรอกไม่ถูกต้อง
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
-              );
-            } else if (pay < _grandTotal) {
-              // ถ้าเงินที่รับน้อยกว่ายอดรวม
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("ยอดเงินไม่เพียงพอ")),
-              );
-            } else {
-              final change = pay - _grandTotal;
-              Navigator.pop(context); // ปิด Dialog
-
-              // ✅ 1) สร้างรายการ BillItem จาก _saleItems
-              List<BillItem> billItems = _saleItems.map((saleItem) {
-                return BillItem(
-                  productName: saleItem.product.name,
-                  price: saleItem.product.Retail_price,
-                  quantity: saleItem.saleQuantity,
-                  discount: 0.0, // ถ้ายังไม่มีส่วนลด ให้ 0 ไปก่อน
-                );
-              }).toList();
-
-              // ✅ 2) สร้าง BillModel
-              final newBill = BillModel(
-                billId: "BILL-${DateTime.now().millisecondsSinceEpoch}", // สร้าง ID ตามเวลา
-                billDate: DateTime.now(),
-                items: billItems,
-                totalDiscount: 0.0, // ถ้ามีส่วนลดทั้งบิลให้ใส่
-                netTotal: _grandTotal,
-                moneyReceived: pay,
-                change: change,
-              );
-
-              // ✅ 3) บันทึกลง Hive
-              _billBox.add(newBill);
-
-              // ✅ แจ้งเตือน
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "บันทึกบิลแล้ว\n"
-                    "ยอดชำระเงิน: ${_grandTotal.toStringAsFixed(2)}\n"
-                    "เงินทอน: ${change.toStringAsFixed(2)}",
-                  ),
-                ),
-              );
-
-              // ✅ ล้างรายการ
-              setState(() {
-                _saleItems.clear();
-              });
-            }
-          },
-          child: const Text("ชำระเงิน"),
-        ),
-      ],
-    ),
-  );
-}
-
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -409,8 +424,25 @@ void initState() {
                     },
                   ),
           ),
-
-          // แถวแสดงยอดรวมสุทธิ (แสดงอย่างเดียว)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const Text("ราคาปลีก"),
+                Switch(
+                  value: _useWholesale,
+                  onChanged: (value) {
+                    setState(() {
+                      _useWholesale = value;
+                    });
+                  },
+                ),
+                const Text("ราคาส่ง"),
+              ],
+            ),
+          ),
+          // แถวแสดงยอดรวมสุทธิ
           Container(
             color: Colors.grey[200],
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -429,7 +461,6 @@ void initState() {
               ],
             ),
           ),
-
           // ปุ่ม "ชำระเงิน"
           Container(
             padding: const EdgeInsets.all(16),
@@ -442,7 +473,7 @@ void initState() {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: _showPaymentDialog, // ✅ เรียก Popup รับเงิน
+              onPressed: _showPaymentDialog,
               child: const Text("ชำระเงิน",
                   style: TextStyle(fontSize: 18, color: Colors.white)),
             ),

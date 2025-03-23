@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:sintaveeapp/AccountPageApp/account_page.dart';
 import '../HomepageApp/my_homepage.dart';
 import '../Bill_Page/BillSale_Page.dart';
+import '../Sale_Page/sale_product.dart';
+import '../Database/product_model.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
+import 'package:hive/hive.dart';
 
 class BottomNavbar extends StatelessWidget {
   const BottomNavbar(
@@ -10,26 +14,59 @@ class BottomNavbar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  void _handleNavigation(int index, BuildContext context) {
+  void _handleNavigation(int index, BuildContext context) async {
     if (index == 0) {
-      // นำทางไปหน้า MyHomepage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => MyHomepage()),
       );
     } else if (index == 1) {
-      // นำทางไปหน้า Myaccount
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => Myaccount()),
       );
+    } else if (index == 2) {
+      // 👉 สแกนบาร์โค้ด แล้วไปหน้า SalePage พร้อมเพิ่มสินค้า
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const SimpleBarcodeScannerPage()),
+      );
+
+      if (result != null && result != '-1') {
+        final productBox = Hive.box<ProductModel>('products');
+        final matching = productBox.values.firstWhere(
+          (p) => p.barcode == result,
+          orElse: () => ProductModel(
+            name: 'ไม่พบสินค้า',
+            Retail_price: 0,
+            Wholesale_price: 0,
+            quantity: 0,
+            category: 'ไม่ระบุ',
+          ),
+        );
+
+        if (matching.name != 'ไม่พบสินค้า') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SalePage(
+                initialBarcode: result, // 👈 ส่ง barcode ไปหน้า SalePage
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("ไม่พบสินค้าด้วยบาร์โค้ดนี้")),
+          );
+        }
+      }
     } else if (index == 3) {
-      // นำทางไปหน้า Myaccount
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => BillSale_Page()),
       );
-    }else {
+    } else {
       onTap(index);
     }
   }
@@ -59,10 +96,9 @@ class BottomNavbar extends StatelessWidget {
             ),
             label: "บัญชี"),
         BottomNavigationBarItem(
-            icon: Icon(
-              Icons.menu,
-            ),
-            label: "เมนูหลัก"),
+          icon: Icon(Icons.qr_code_scanner),
+          label: "สแกนบาร์โค้ด",
+        ),
         BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long), label: "บิลลูกค้า"),
         BottomNavigationBarItem(

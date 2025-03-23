@@ -25,98 +25,113 @@ class BillDetailPage extends StatelessWidget {
     // โหลดฟอนต์ไทยจาก assets
     final fontData = await rootBundle.load("assets/fonts/THSarabun.ttf");
     final fontThai = pw.Font.ttf(fontData.buffer.asByteData());
+    final logoBytes =
+        (await rootBundle.load('assets/logo1.png')).buffer.asUint8List();
+    final logoImage = pw.MemoryImage(logoBytes);
 
     doc.addPage(
       pw.Page(
-        pageFormat: format,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text("ShipSale(วรรณ ภาษีเจริญ)",
-                  style: pw.TextStyle(
-                      font: fontThai,
-                      fontSize: 16,
-                      fontWeight: pw.FontWeight.bold)),
-              pw.Text("Tel/Fax: 0628392304",
-                  style: pw.TextStyle(font: fontThai)),
-              pw.Text("...ขอบคุณที่ใช้บริการ...",
-                  style: pw.TextStyle(font: fontThai)),
-              pw.SizedBox(height: 8),
+          pageFormat: format,
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // ✅ โลโก้หัวบิล (ขนาดเล็ก)
+                pw.Center(
+                  child: pw.Image(logoImage, width: 100, height: 100),
+                ),
+                pw.SizedBox(height: 10),
+                // ... ส่วนอื่น ๆ ต่อไปเหมือนเดิม ...
+                pw.SizedBox(height: 10),
 
-              // วันที่/เวลา
-              pw.Text("วันที่: ${bill.billDate.toLocal()}",
-                  style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                // ✅ ชื่อหัวบิล
+                // pw.Center(
+                //   child: pw.Text("ใบเสร็จสินค้า",
+                //       style: pw.TextStyle(
+                //           font: fontThai,
+                //           fontSize: 16,
+                //           fontWeight: pw.FontWeight.bold)),
+                // ),
+                // pw.SizedBox(height: 5),
 
-              // รายการสินค้า
-              pw.Text("รายการสินค้า:",
-                  style: pw.TextStyle(
-                      font: fontThai,
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold)),
-              pw.Divider(),
-              ...bill.items.map((item) {
-                return pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                pw.Text("บิลเลขที่: ${bill.billId}",
+                    style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                pw.Text("วันที่: ${bill.billDate.toLocal()}",
+                    style: pw.TextStyle(font: fontThai, fontSize: 12)),
+
+                pw.SizedBox(height: 10),
+                pw.Text("รายการสินค้า:",
+                    style: pw.TextStyle(
+                        font: fontThai,
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold)),
+                pw.Divider(),
+
+                ...bill.items.map((item) {
+                  return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(item.productName,
+                          style: pw.TextStyle(
+                              font: fontThai,
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 12)),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                          "ราคา: ${item.price} x ${item.quantity} (ส่วนลด: ${item.discount})",
+                          style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                      pw.Text("รวม: ${item.itemNetTotal} บาท",
+                          style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                      pw.Divider(),
+                    ],
+                  );
+                }).toList(),
+
+                pw.SizedBox(height: 8),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(item.productName,
+                    pw.Text("รวมสุทธิ:",
                         style: pw.TextStyle(
-                            font: fontThai,
-                            fontWeight: pw.FontWeight.bold,
-                            fontSize: 12)),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                        "ราคา: ${item.price} x ${item.quantity} (ส่วนลด: ${item.discount})",
-                        style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                    pw.Text("รวม: ${item.itemNetTotal} บาท",
-                        style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                    pw.Divider(),
+                            font: fontThai, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("${bill.netTotal} บาท",
+                        style: pw.TextStyle(font: fontThai)),
                   ],
-                );
-              }).toList(),
+                ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text("รับเงิน:", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${bill.moneyReceived} บาท",
+                        style: pw.TextStyle(font: fontThai)),
+                  ],
+                ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text("ทอน:", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${bill.change} บาท",
+                        style: pw.TextStyle(font: fontThai)),
+                  ],
+                ),
 
-              // สรุปยอด
-              pw.SizedBox(height: 8),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("รวมสุทธิ:",
-                      style: pw.TextStyle(
-                          font: fontThai, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${bill.netTotal} บาท",
-                      style: pw.TextStyle(font: fontThai)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("รับเงิน:", style: pw.TextStyle(font: fontThai)),
-                  pw.Text("${bill.moneyReceived} บาท",
-                      style: pw.TextStyle(font: fontThai)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("ทอน:", style: pw.TextStyle(font: fontThai)),
-                  pw.Text("${bill.change} บาท",
-                      style: pw.TextStyle(font: fontThai)),
-                ],
-              ),
-              pw.SizedBox(height: 8),
+                pw.SizedBox(height: 10),
+                pw.Divider(),
 
-              // Footer
-              pw.Divider(),
-              pw.Text("เวลาทำการ: เปิดทุกวัน 08.00 - 19.00",
-                  style: pw.TextStyle(font: fontThai)),
-              pw.Text("www.shipsaleexpress.com",
-                  style: pw.TextStyle(font: fontThai)),
-              pw.Text("http://th.kerryexpress.com/th/track/",
-                  style: pw.TextStyle(font: fontThai)),
-            ],
-          );
-        },
-      ),
+                // ✅ Footer จัดกลาง
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text("เวลาทำการ: เปิดทุกวัน 08.00 - 19.00",
+                          style: pw.TextStyle(font: fontThai)),
+                      pw.Text("ขอบคุณที่ใช้บริการ",
+                          style: pw.TextStyle(font: fontThai)),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }),
     );
 
     return doc.save();

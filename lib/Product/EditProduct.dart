@@ -80,47 +80,43 @@ class _EditProductState extends State<EditProduct> {
   void _showSearchDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
+        // ประกาศตัวแปรที่นี่
         String query = '';
-        List<ProductModel> searchResults = []; // เริ่มต้นเป็นลิสต์ว่าง
+        List<ProductModel> searchResults = [];
 
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (BuildContext context,
+              void Function(void Function()) setStateDialog) {
+            // ฟังก์ชันค้นหา
             void handleSearch(String value) {
               query = value;
               if (query.isEmpty) {
-                // ยังไม่พิมพ์ -> เคลียร์รายการ
                 searchResults = [];
               } else {
-                // พิมพ์แล้ว -> ค้นหา
                 searchResults = allProducts
                     .where((product) => product.name
                         .toLowerCase()
                         .contains(query.toLowerCase()))
                     .toList();
               }
-              setStateDialog(() {});
+              setStateDialog(() {}); // รีเฟรชใน Dialog
             }
 
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // หัวข้อ
                     const Text(
                       "ค้นหาสินค้า",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
-
                     // ช่องค้นหา
                     TextField(
                       onChanged: handleSearch,
@@ -128,31 +124,23 @@ class _EditProductState extends State<EditProduct> {
                         labelText: "พิมพ์ชื่อสินค้า",
                         prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // รายการผลลัพธ์การค้นหา
+                    // รายการผลลัพธ์
                     SizedBox(
                       width: double.maxFinite,
                       height: 300,
                       child: query.isEmpty
-                          // 1) ยังไม่ได้พิมพ์ -> แสดงข้อความ
                           ? const Center(child: Text("ยังไม่ได้ค้นหา"))
                           : searchResults.isEmpty
-                              // 2) พิมพ์แล้ว แต่ไม่พบสินค้า
                               ? const Center(child: Text("ไม่พบสินค้า"))
-                              // 3) พิมพ์แล้ว และพบสินค้า
                               : ListView.builder(
                                   itemCount: searchResults.length,
                                   itemBuilder: (context, index) {
                                     var product = searchResults[index];
                                     return Card(
-                                      elevation: 2,
-                                      margin: const EdgeInsets.symmetric(
-                                          vertical: 5),
                                       child: ListTile(
                                         title: Text(product.name),
                                         subtitle: Text(
@@ -160,13 +148,11 @@ class _EditProductState extends State<EditProduct> {
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            // ปุ่มแก้ไข (ดินสอ)
+                                            // ปุ่มแก้ไข
                                             IconButton(
-                                              icon: const Icon(Icons.edit,
-                                                  color: Color.fromARGB(
-                                                      255, 12, 12, 12)),
+                                              icon: const Icon(Icons.edit),
                                               onPressed: () {
-                                                Navigator.pop(context);
+                                                // อย่า pop dialog ทิ้ง ให้ push ตรง ๆ
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
@@ -175,14 +161,30 @@ class _EditProductState extends State<EditProduct> {
                                                       product: product,
                                                     ),
                                                   ),
-                                                );
+                                                ).then((result) {
+                                                  if (result == true) {
+                                                    // โหลดข้อมูลใหม่จาก Hive
+                                                    setState(() {
+                                                      allProducts = productBox!
+                                                          .values
+                                                          .toList();
+                                                    });
+                                                    // กรองตาม query เดิม
+                                                    setStateDialog(() {
+                                                      searchResults = allProducts
+                                                          .where((p) => p.name
+                                                              .toLowerCase()
+                                                              .contains(query
+                                                                  .toLowerCase()))
+                                                          .toList();
+                                                    });
+                                                  }
+                                                });
                                               },
                                             ),
-                                            // ปุ่มลบ (ถังขยะ)
+                                            // ปุ่มลบ
                                             IconButton(
-                                              icon: const Icon(Icons.delete,
-                                                  color: Color.fromARGB(
-                                                      255, 5, 5, 5)),
+                                              icon: const Icon(Icons.delete),
                                               onPressed: () {
                                                 int hiveIndex = productBox!
                                                     .values
@@ -211,16 +213,12 @@ class _EditProductState extends State<EditProduct> {
                                 ),
                     ),
                     const SizedBox(height: 10),
-
-                    // ปุ่มปิด
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          "ปิด",
-                          style: TextStyle(color: Colors.red),
-                        ),
+                        child: const Text("ปิด",
+                            style: TextStyle(color: Colors.red)),
                       ),
                     ),
                   ],

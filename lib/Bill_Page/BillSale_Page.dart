@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
-import '../Database/bill_model.dart'; // ไฟล์ Model บิล
-import 'bill_detail_page.dart'; // นำเข้า BillDetailPage ที่เราสร้างด้านล่าง
+import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart'; // ✅ เพิ่มไฟล์ header
+import '../Database/bill_model.dart';
+import 'bill_detail_page.dart';
 
 class BillSale_Page extends StatefulWidget {
   const BillSale_Page({Key? key}) : super(key: key);
@@ -31,45 +32,63 @@ class _BillSale_PageState extends State<BillSale_Page> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("รายการบิล/การขาย"),
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: _billBox.listenable(),
-        builder: (context, Box<BillModel> box, _) {
-          if (box.values.isEmpty) {
-            return const Center(child: Text("ยังไม่มีบิลการขาย"));
-          }
-          final bills = box.values.toList().cast<BillModel>();
-          return ListView.builder(
-            itemCount: bills.length,
-            itemBuilder: (context, index) {
-              final bill = bills[index];
-              return Card(
-                margin: const EdgeInsets.all(8.0),
-                child: ListTile(
-                  title: Text(
-                    "บิล: ${bill.billId}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    "วันที่: ${bill.billDate.toLocal().toString().split(' ')[0]}\nยอดรวมสุทธิ: ${bill.netTotal.toStringAsFixed(2)} บาท",
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    // เมื่อแตะรายการบิล ส่งไปยังหน้ารายละเอียดบิล
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BillDetailPage(bill: bill),
+      body: Column(
+        children: [
+          // ✅ ส่วนหัวด้วย TPrimaryHeaderContainer
+          TPrimaryHeaderContainer(
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                "รายการบิล / การขาย",
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+            ),
+          ),
+
+          // ✅ ส่วนแสดงรายการบิล
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: _billBox.listenable(),
+              builder: (context, Box<BillModel> box, _) {
+                if (box.values.isEmpty) {
+                  return const Center(child: Text("ยังไม่มีบิลการขาย"));
+                }
+                final bills = box.values.toList().cast<BillModel>();
+                return ListView.builder(
+                  itemCount: bills.length,
+                  itemBuilder: (context, index) {
+                    final bill = bills[index];
+                    return Card(
+                      margin: const EdgeInsets.all(8.0),
+                      child: ListTile(
+                        title: Text(
+                          "บิล: ${bill.billId}",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          "วันที่: ${bill.billDate.toLocal().toString().split(' ')[0]}\n"
+                          "ยอดรวมสุทธิ: ${bill.netTotal.toStringAsFixed(2)} บาท",
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BillDetailPage(bill: bill),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
