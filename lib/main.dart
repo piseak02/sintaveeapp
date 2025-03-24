@@ -29,7 +29,9 @@ import 'package:path_provider/path_provider.dart'; // ใช้หา path ท�
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
 import 'Database/bill_model.dart';
+import 'Database/lot_model.dart';
 import 'HomepageApp/my_homepage.dart';
+import 'Database/log_model.dart';
 
 Future<String> getDownloadsPath() async {
   Directory? downloadsDir;
@@ -64,10 +66,14 @@ void main() async {
   Hive.registerAdapter(CategoryModelAdapter());
   Hive.registerAdapter(BillItemAdapter());
   Hive.registerAdapter(BillModelAdapter());
+  Hive.registerAdapter(LotModelAdapter());
+  Hive.registerAdapter(LogModelAdapter());
 
+  await Hive.openBox<LotModel>('lots');
   await Hive.openBox<ProductModel>('products');
   await Hive.openBox<CategoryModel>('categories');
   await Hive.openBox<BillModel>('bills');
+  await Hive.openBox<LogModel>('logs');
 
   runApp(MyApp());
 }

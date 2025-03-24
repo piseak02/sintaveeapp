@@ -4,7 +4,8 @@ import '../Database/product_model.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../Database/bill_model.dart';
-import '../Bill_Page/bill_detail_page.dart'; // Import BillDetailPage
+import '../Database/lot_model.dart';
+import '../Bill_Page/bill_detail_page.dart';
 
 /// Model สำหรับรายการขาย (SaleItem)
 class SaleItem {
@@ -57,7 +58,7 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
         final product = results[index];
         return ListTile(
           title: Text(product.name),
-          subtitle: Text('ราคา: ${product.Retail_price}'),
+          subtitle: Text('ราคา: ${product.retailPrice}'),
           onTap: () {
             close(context, product);
           },
@@ -81,7 +82,7 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
         final product = suggestions[index];
         return ListTile(
           title: Text(product.name),
-          subtitle: Text('ราคา: ${product.Retail_price}'),
+          subtitle: Text('ราคา: ${product.retailPrice}'),
           onTap: () {
             close(context, product);
           },
@@ -92,7 +93,7 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
 }
 
 class SalePage extends StatefulWidget {
-  final String? initialBarcode; // 👈 เพิ่มตรงนี้
+  final String? initialBarcode; // สามารถส่ง barcode มาเริ่มต้นได้
 
   const SalePage({Key? key, this.initialBarcode}) : super(key: key);
 
@@ -104,6 +105,7 @@ class _SalePageState extends State<SalePage> {
   late Box<ProductModel> _productBox;
   List<SaleItem> _saleItems = [];
   late Box<BillModel> _billBox;
+  late Box<LotModel> _lotBox;
 
   // Toggle flag สำหรับคำนวนราคาปลีก/ส่ง
   bool _useWholesale = false;
@@ -114,6 +116,7 @@ class _SalePageState extends State<SalePage> {
     _requestCameraPermission();
     _productBox = Hive.box<ProductModel>('products');
     _billBox = Hive.box<BillModel>('bills');
+    _lotBox = Hive.box<LotModel>('lots');
 
     if (widget.initialBarcode != null) {
       _addProductToSale(widget.initialBarcode!);
@@ -125,8 +128,8 @@ class _SalePageState extends State<SalePage> {
     double sum = 0.0;
     for (var item in _saleItems) {
       double price = _useWholesale
-          ? item.product.Wholesale_price
-          : item.product.Retail_price;
+          ? item.product.wholesalePrice
+          : item.product.retailPrice;
       sum += price * item.saleQuantity;
     }
     return sum;
@@ -146,7 +149,8 @@ class _SalePageState extends State<SalePage> {
   Future<void> _scanBarcode() async {
     final result = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
+      MaterialPageRoute(
+          builder: (context) => const SimpleBarcodeScannerPage()),
     );
 
     if (result != null && result != '-1') {
@@ -188,11 +192,11 @@ class _SalePageState extends State<SalePage> {
     }
   }
 
-  /// สร้าง Card สำหรับแต่ละรายการขาย โดยคำนวณราคา (ปลีก/ส่ง) ตามที่เลือก
+  /// สร้าง Card สำหรับแต่ละรายการขาย
   Widget _buildSaleItemCard(SaleItem saleItem, int index) {
     double price = _useWholesale
-        ? saleItem.product.Wholesale_price
-        : saleItem.product.Retail_price;
+        ? saleItem.product.wholesalePrice
+        : saleItem.product.retailPrice;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       elevation: 3,
@@ -218,13 +222,13 @@ class _SalePageState extends State<SalePage> {
               ],
             ),
             const SizedBox(height: 8),
-            // แถวที่สอง: ราคาต่อหน่วยตามที่เลือก และปุ่มควบคุมจำนวนสินค้า
+            // แถวที่สอง: ราคาต่อหน่วยและปุ่มควบคุมจำนวนสินค้า
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(_useWholesale
-                    ? "ราคาส่ง: ${saleItem.product.Wholesale_price}"
-                    : "ราคาปลีก: ${saleItem.product.Retail_price}"),
+                    ? "ราคาส่ง: ${saleItem.product.wholesalePrice}"
+                    : "ราคาปลีก: ${saleItem.product.retailPrice}"),
                 Row(
                   children: [
                     IconButton(
@@ -258,6 +262,44 @@ class _SalePageState extends State<SalePage> {
     );
   }
 
+  /// Helper function สำหรับตัดสต็อกของสินค้าตาม saleItem (FIFO)
+  Future<void> _deductStock() async {
+    for (var saleItem in _saleItems) {
+      int quantityToDeduct = saleItem.saleQuantity;
+      // ดึงรายการล็อตสำหรับสินค้านี้จาก lotBox แบบ key-value pair
+      final lotEntries = _lotBox.toMap().entries
+          .where((entry) => (entry.value as LotModel).productId == saleItem.product.id)
+          .toList();
+      // เรียงล็อตตามวันหมดอายุจากน้อยไปมาก (FIFO)
+      lotEntries.sort((a, b) {
+        LotModel lotA = a.value;
+        LotModel lotB = b.value;
+        return lotA.expiryDate.compareTo(lotB.expiryDate);
+      });
+      for (var entry in lotEntries) {
+        if (quantityToDeduct <= 0) break;
+        LotModel lot = entry.value;
+        if (lot.quantity > quantityToDeduct) {
+          // ถ้าล็อตมีจำนวนมากพอ แก้ไขจำนวนในล็อตนั้น
+          LotModel updatedLot = LotModel(
+            lotId: lot.lotId,
+            productId: lot.productId,
+            quantity: lot.quantity - quantityToDeduct,
+            expiryDate: lot.expiryDate,
+            recordDate: lot.recordDate,
+            note: lot.note,
+          );
+          await _lotBox.put(entry.key, updatedLot);
+          quantityToDeduct = 0;
+        } else {
+          // ถ้าล็อตมีจำนวนน้อยกว่าหรือเท่ากับที่ต้องการตัด
+          quantityToDeduct -= lot.quantity;
+          await _lotBox.delete(entry.key);
+        }
+      }
+    }
+  }
+
   /// Popup รับเงินและชำระเงิน (หลังจากชำระเงิน จะเปลี่ยนหน้าไปยัง BillDetailPage)
   void _showPaymentDialog() {
     final moneyController = TextEditingController();
@@ -286,7 +328,7 @@ class _SalePageState extends State<SalePage> {
             child: const Text("ยกเลิก"),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final double? pay = double.tryParse(moneyController.text);
               if (pay == null || pay.isNaN) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -300,11 +342,11 @@ class _SalePageState extends State<SalePage> {
                 final change = pay - _grandTotal;
                 Navigator.pop(context); // ปิด Dialog
 
-                // สร้างรายการ BillItem โดยใช้ราคาที่เลือก (ปลีก/ส่ง)
+                // สร้างรายการ BillItem จาก _saleItems
                 List<BillItem> billItems = _saleItems.map((saleItem) {
                   double price = _useWholesale
-                      ? saleItem.product.Wholesale_price
-                      : saleItem.product.Retail_price;
+                      ? saleItem.product.wholesalePrice
+                      : saleItem.product.retailPrice;
                   return BillItem(
                     productName: saleItem.product.name,
                     price: price,
@@ -324,17 +366,28 @@ class _SalePageState extends State<SalePage> {
                   change: change,
                 );
 
-                // บันทึกลง Hive
-                _billBox.add(newBill);
+                // บันทึก BillModel ลง Hive
+                await _billBox.add(newBill);
 
-                // เปลี่ยนหน้าไปที่ BillDetailPage ทันที
+                // ตัดสต็อกสินค้าออกจาก LotModel ตามยอดขาย (FIFO)
+                await _deductStock();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "บันทึกบิลแล้ว\nยอดชำระเงิน: ${_grandTotal.toStringAsFixed(2)}\nเงินทอน: ${change.toStringAsFixed(2)}",
+                    ),
+                  ),
+                );
+
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => BillDetailPage(bill: newBill)),
+                    builder: (context) => BillDetailPage(bill: newBill),
+                  ),
                 );
 
-                // เคลียร์รายการขาย (ถ้าต้องการ)
+                // เคลียร์รายการขาย
                 setState(() {
                   _saleItems.clear();
                 });

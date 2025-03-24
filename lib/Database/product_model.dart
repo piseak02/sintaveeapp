@@ -5,34 +5,34 @@ part 'product_model.g.dart';
 @HiveType(typeId: 0)
 class ProductModel {
   @HiveField(0)
-  final String name;
+  final String id; // 🔑 ใช้เชื่อมกับ LotModel
 
   @HiveField(1)
-  final double Retail_price;
+  final String name;
 
   @HiveField(2)
-  final double Wholesale_price;
+  final double retailPrice;
 
   @HiveField(3)
-  final int quantity;
+  final double wholesalePrice;
 
   @HiveField(4)
-  final String? expiryDate;
-
-  @HiveField(5)
   final String category;
 
-  @HiveField(6)
+  @HiveField(5)
   final String? barcode;
 
+  @HiveField(6)
+  final String? imageUrl; // เพิ่มถ้ามีรูป
+
   ProductModel({
+    required this.id,
     required this.name,
-    required this.Retail_price,
-    required this.Wholesale_price,
-    required this.quantity,
-    this.expiryDate,
+    required this.retailPrice,
+    required this.wholesalePrice,
     required this.category,
     this.barcode,
+    this.imageUrl,
   });
 
   get key => null;

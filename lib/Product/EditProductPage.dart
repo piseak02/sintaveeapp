@@ -26,8 +26,6 @@ class _EditProductPageState extends State<EditProductPage> {
   final TextEditingController _Retail_priceController = TextEditingController();
   final TextEditingController _Wholesale_priceController =
       TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _barcodeController = TextEditingController();
 
   @override
@@ -40,10 +38,8 @@ class _EditProductPageState extends State<EditProductPage> {
 
     // เติมค่าข้อมูลที่ต้องแก้ไข
     _productNameController.text = widget.product.name;
-    _Retail_priceController.text = widget.product.Retail_price.toString();
-    _Wholesale_priceController.text = widget.product.Wholesale_price.toString();
-    _quantityController.text = widget.product.quantity.toString();
-    _expiryDateController.text = widget.product.expiryDate ?? '';
+_Retail_priceController.text = widget.product.retailPrice.toString();
+_Wholesale_priceController.text = widget.product.wholesalePrice.toString();
     _barcodeController.text = widget.product.barcode ?? '';
     _selectedCategory = widget.product.category;
   }
@@ -54,26 +50,26 @@ class _EditProductPageState extends State<EditProductPage> {
     });
   }
 
-  void _updateProduct() {
-    final updatedProduct = ProductModel(
-      name: _productNameController.text.trim(),
-      Retail_price: double.tryParse(_Retail_priceController.text) ?? 0,
-      Wholesale_price: double.tryParse(_Wholesale_priceController.text) ?? 0,
-      quantity: int.tryParse(_quantityController.text) ?? 0,
-      expiryDate: _expiryDateController.text.trim(),
-      category: _selectedCategory ?? "ไม่ระบุ",
-      barcode: _barcodeController.text.trim(),
-    );
+void _updateProduct() {
+  final updatedProduct = ProductModel(
+    id: widget.product.id, // ต้องคง ID เดิมไว้
+    name: _productNameController.text.trim(),
+    retailPrice: double.tryParse(_Retail_priceController.text) ?? 0,
+    wholesalePrice: double.tryParse(_Wholesale_priceController.text) ?? 0,
+    category: _selectedCategory ?? "ไม่ระบุ",
+    barcode: _barcodeController.text.trim(),
+    imageUrl: widget.product.imageUrl,
+  );
 
-    int index = productBox!.values.toList().indexOf(widget.product);
-    if (index != -1) {
-      productBox!.putAt(index, updatedProduct);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("อัปเดตสินค้าสำเร็จ")),
-      );
-      Navigator.pop(context, true); // ส่งผลลัพธ์กลับไปว่าอัปเดตแล้ว
-    }
+  int index = productBox!.values.toList().indexOf(widget.product);
+  if (index != -1) {
+    productBox!.putAt(index, updatedProduct);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("อัปเดตสินค้าสำเร็จ")),
+    );
+    Navigator.pop(context, true);
   }
+}
 
   Future<void> _scanBarcode() async {
     final result = await Navigator.push(
@@ -158,11 +154,6 @@ class _EditProductPageState extends State<EditProductPage> {
                         _buildTextField(
                             controller: _Wholesale_priceController,
                             label: "ราคาส่ง"),
-                        _buildTextField(
-                            controller: _quantityController, label: "จำนวน"),
-                        _buildTextField(
-                            controller: _expiryDateController,
-                            label: "วันหมดอายุ"),
                         TextFormField(
                           controller: _barcodeController,
                           decoration: InputDecoration(

@@ -7,6 +7,9 @@ import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
+import '../Database/lot_model.dart';
+import 'package:sintaveeapp/Log/log_service.dart';
+
 
 class MyAddProduct extends StatefulWidget {
   const MyAddProduct({super.key});
@@ -45,34 +48,75 @@ class _MyAddProductState extends State<MyAddProduct> {
     });
   }
 
-  void _addProduct() {
-    final name = _productNameController.text.trim();
-    final Retail_price = double.tryParse(_Retail_priceController.text) ?? 0;
-    final Wholesale_price =
-        double.tryParse(_Wholesale_priceController.text) ?? 0;
-    final quantity = int.tryParse(_quantityController.text) ?? 0;
-    final expiryDate = _expiryDateController.text.trim();
-    final category = _selectedCategory ?? "ไม่ระบุ";
-    final barcode = _barcodeController.text.trim(); // ✅ เพิ่มค่า barcode
+void _addProduct() async {
+  final name = _productNameController.text.trim();
+  final retailPrice = double.tryParse(_Retail_priceController.text) ?? 0;
+  final wholesalePrice = double.tryParse(_Wholesale_priceController.text) ?? 0;
+  final quantity = int.tryParse(_quantityController.text) ?? 0;
+  final expiryDateStr = _expiryDateController.text.trim();
+  final category = _selectedCategory ?? "ไม่ระบุ";
+  final barcode = _barcodeController.text.trim();
 
-    if (name.isNotEmpty) {
-      final newProduct = ProductModel(
-        name: name,
-        Retail_price: Retail_price,
-        Wholesale_price: Wholesale_price,
-        quantity: quantity,
-        expiryDate: expiryDate,
-        category: category,
-        barcode: barcode, // ✅ บันทึกบาร์โค้ด
-      );
-
-      productBox!.add(newProduct);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("เพิ่มสินค้าสำเร็จ")),
-      );
-      _clearFields();
-    }
+  if (name.isEmpty || expiryDateStr.isEmpty || quantity <= 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("กรุณากรอกข้อมูลให้ครบถ้วน")),
+    );
+    return;
   }
+
+  try {
+    final parts = expiryDateStr.split('/');
+    final expiryDate = DateTime(
+      int.parse(parts[2]),
+      int.parse(parts[1]),
+      int.parse(parts[0]),
+    );
+
+    // อ่าน counter id ปัจจุบันจาก Hive หรือใช้ 0 ถ้ายังไม่มี
+    final settingsBox = await Hive.openBox('settings');
+    int currentId = settingsBox.get('productIdCounter', defaultValue: 0);
+
+    final newProductId = (currentId + 1).toString(); // เช่น "1", "2", "3" ...
+
+    final newProduct = ProductModel(
+      id: newProductId,
+      name: name,
+      retailPrice: retailPrice,
+      wholesalePrice: wholesalePrice,
+      category: category,
+      barcode: barcode,
+    );
+
+    await productBox!.add(newProduct);
+
+    final newLot = LotModel(
+      lotId: "LOT-${DateTime.now().millisecondsSinceEpoch}",
+      productId: newProductId,
+      quantity: quantity,
+      expiryDate: expiryDate,
+      recordDate: DateTime.now(),
+    );
+
+    final lotBox = Hive.box<LotModel>('lots');
+    await lotBox.add(newLot);
+
+    // บันทึก counter ใหม่กลับไป
+    await settingsBox.put('productIdCounter', currentId + 1);
+
+    // บันทึก log เมื่อเพิ่มสินค้าและล็อตสำเร็จ
+    await LogService.addLog("เพิ่มสินค้า: ${newProduct.name} (ID: $newProductId)", "add");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("เพิ่มสินค้าพร้อมล็อตสำเร็จ")),
+    );
+
+    _clearFields();
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("รูปแบบวันหมดอายุไม่ถูกต้อง")),
+    );
+  }
+}
 
   void _clearFields() {
     _productNameController.clear();
@@ -136,7 +180,6 @@ class _MyAddProductState extends State<MyAddProduct> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            // ใช้ StatefulBuilder เพื่ออัปเดต UI ของ Dialog
             return AlertDialog(
               title: Text("จัดการหมวดหมู่"),
               content: SizedBox(
@@ -150,19 +193,143 @@ class _MyAddProductState extends State<MyAddProduct> {
                           final cat = _categories[index];
                           return ListTile(
                             title: Text(cat),
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                categoryBox!.deleteAt(index); // ลบจาก Hive
-                                setState(() {
-                                  _categories
-                                      .removeAt(index); // ลบจากรายการใน UI
-                                  if (_selectedCategory == cat) {
-                                    _selectedCategory = null;
-                                  }
-                                });
-                                setStateDialog(() {}); // รีเฟรช Dialog ทันที
-                              },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // ปุ่มแก้ไข
+                                IconButton(
+                                  icon: Icon(Icons.edit, color: Colors.blue),
+                                  onPressed: () {
+                                    TextEditingController editController =
+                                        TextEditingController(text: cat);
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text("แก้ไขหมวดหมู่"),
+                                        content: TextField(
+                                          controller: editController,
+                                          decoration: InputDecoration(
+                                            labelText: "ชื่อหมวดหมู่ใหม่",
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: Text("ยกเลิก"),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () async {
+                                              String newName =
+                                                  editController.text.trim();
+                                              if (newName.isEmpty) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                      content: Text(
+                                                          "กรุณากรอกชื่อหมวดหมู่ใหม่")),
+                                                );
+                                                return;
+                                              }
+                                              // อัปเดตใน categoryBox
+                                              await categoryBox!.putAt(index,
+                                                  CategoryModel(name: newName));
+
+                                              // อัปเดตชื่อหมวดหมู่ในสินค้า (ProductModel) ที่มีหมวดหมู่นี้
+                                              for (var entry in productBox!
+                                                  .toMap()
+                                                  .entries) {
+                                                ProductModel prod = entry.value;
+                                                if (prod.category == cat) {
+                                                  ProductModel updatedProd =
+                                                      ProductModel(
+                                                    id: prod.id,
+                                                    name: prod.name,
+                                                    retailPrice:
+                                                        prod.retailPrice,
+                                                    wholesalePrice:
+                                                        prod.wholesalePrice,
+                                                    category: newName,
+                                                    barcode: prod.barcode,
+                                                    imageUrl: prod.imageUrl,
+                                                  );
+                                                  await productBox!.put(
+                                                      entry.key, updatedProd);
+                                                }
+                                              }
+
+                                              // อัปเดต _categories และ _selectedCategory ใน UI
+                                              setState(() {
+                                                _categories[index] = newName;
+                                                if (_selectedCategory == cat) {
+                                                  _selectedCategory = newName;
+                                                }
+                                              });
+                                              setStateDialog(() {});
+                                              Navigator.pop(
+                                                  context); // ปิด dialog แก้ไข
+                                            },
+                                            child: Text("บันทึก"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                // ปุ่มลบ
+                                IconButton(
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    bool? confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text("ยืนยันการลบ"),
+                                        content: Text(
+                                            "ต้องการลบหมวดหมู่ \"$cat\" หรือไม่? สินค้าในหมวดนี้จะถูกลบด้วย"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text("ยกเลิก"),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text("ลบ",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      // ลบหมวดหมู่จาก Hive
+                                      await categoryBox!.deleteAt(index);
+                                      // ลบสินค้าที่อยู่ในหมวดนี้ออกจาก productBox
+                                      List keysToDelete = [];
+                                      for (var entry
+                                          in productBox!.toMap().entries) {
+                                        ProductModel prod = entry
+                                            .value; // entry.value มีชนิด ProductModel
+                                        if (prod.category == cat) {
+                                          keysToDelete.add(entry.key);
+                                        }
+                                      }
+                                      for (var key in keysToDelete) {
+                                        await productBox!.delete(key);
+                                      }
+                                      setState(() {
+                                        _categories.removeAt(index);
+                                        if (_selectedCategory == cat) {
+                                          _selectedCategory = null;
+                                        }
+                                      });
+                                      setStateDialog(() {});
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           );
                         },

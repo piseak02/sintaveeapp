@@ -4,8 +4,8 @@ import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_cont
 import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import '../Bottoom_Navbar/bottom_navbar.dart';
-// ✅ Import หน้าใหม่ที่เราเพิ่งสร้าง
 import '../Product/list_detailPage.dart';
+import '../Database/lot_model.dart';
 
 class List_Product extends StatefulWidget {
   const List_Product({super.key});
@@ -15,6 +15,7 @@ class List_Product extends StatefulWidget {
 }
 
 class _List_ProductState extends State<List_Product> {
+  Box<LotModel>? lotBox;
   Box<ProductModel>? productBox;
   Box<CategoryModel>? categoryBox;
 
@@ -35,6 +36,7 @@ class _List_ProductState extends State<List_Product> {
     super.initState();
     productBox = Hive.box<ProductModel>('products');
     categoryBox = Hive.box<CategoryModel>('categories');
+    lotBox = Hive.box<LotModel>('lots');
     _loadData();
   }
 
@@ -240,7 +242,7 @@ class _List_ProductState extends State<List_Product> {
                                                     ),
                                                   ),
                                                   Text(
-                                                    "${product.Retail_price} บาท",
+                                                    "${product.retailPrice} บาท",
                                                     style: const TextStyle(
                                                       fontSize: 16,
                                                       color: Colors.black,
@@ -266,7 +268,7 @@ class _List_ProductState extends State<List_Product> {
                                                     ),
                                                   ),
                                                   Text(
-                                                    "ราคาส่ง: ${product.Wholesale_price} บาท",
+                                                    "ราคาส่ง: ${product.wholesalePrice} บาท",
                                                     style: const TextStyle(
                                                       fontSize: 14,
                                                       color: Colors.grey,

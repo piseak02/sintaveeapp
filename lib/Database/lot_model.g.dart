@@ -1,50 +1,47 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'product_model.dart';
+part of 'lot_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class ProductModelAdapter extends TypeAdapter<ProductModel> {
+class LotModelAdapter extends TypeAdapter<LotModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 4;
 
   @override
-  ProductModel read(BinaryReader reader) {
+  LotModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return ProductModel(
-      id: fields[0] as String,
-      name: fields[1] as String,
-      retailPrice: fields[2] as double,
-      wholesalePrice: fields[3] as double,
-      category: fields[4] as String,
-      barcode: fields[5] as String?,
-      imageUrl: fields[6] as String?,
+    return LotModel(
+      lotId: fields[0] as String,
+      productId: fields[1] as String,
+      quantity: fields[2] as int,
+      expiryDate: fields[3] as DateTime,
+      recordDate: fields[4] as DateTime,
+      note: fields[5] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, ProductModel obj) {
+  void write(BinaryWriter writer, LotModel obj) {
     writer
-      ..writeByte(7)
-      ..writeByte(0)
-      ..write(obj.id)
-      ..writeByte(1)
-      ..write(obj.name)
-      ..writeByte(2)
-      ..write(obj.retailPrice)
-      ..writeByte(3)
-      ..write(obj.wholesalePrice)
-      ..writeByte(4)
-      ..write(obj.category)
-      ..writeByte(5)
-      ..write(obj.barcode)
       ..writeByte(6)
-      ..write(obj.imageUrl);
+      ..writeByte(0)
+      ..write(obj.lotId)
+      ..writeByte(1)
+      ..write(obj.productId)
+      ..writeByte(2)
+      ..write(obj.quantity)
+      ..writeByte(3)
+      ..write(obj.expiryDate)
+      ..writeByte(4)
+      ..write(obj.recordDate)
+      ..writeByte(5)
+      ..write(obj.note);
   }
 
   @override
@@ -53,7 +50,7 @@ class ProductModelAdapter extends TypeAdapter<ProductModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ProductModelAdapter &&
+      other is LotModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

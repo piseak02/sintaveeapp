@@ -38,11 +38,12 @@ class BottomNavbar extends StatelessWidget {
         final matching = productBox.values.firstWhere(
           (p) => p.barcode == result,
           orElse: () => ProductModel(
+            id: '',
             name: 'ไม่พบสินค้า',
-            Retail_price: 0,
-            Wholesale_price: 0,
-            quantity: 0,
+            retailPrice: 0,
+            wholesalePrice: 0,
             category: 'ไม่ระบุ',
+            barcode: '',
           ),
         );
 

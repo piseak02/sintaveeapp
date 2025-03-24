@@ -5,6 +5,7 @@ import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import '../Bottoom_Navbar/bottom_navbar.dart';
 import '../Product/EditProductPage.dart';
+import '../Database/lot_model.dart';
 
 class EditProduct extends StatefulWidget {
   const EditProduct({super.key});
@@ -16,6 +17,7 @@ class EditProduct extends StatefulWidget {
 class _EditProductState extends State<EditProduct> {
   Box<ProductModel>? productBox;
   Box<CategoryModel>? categoryBox;
+  Box<LotModel>? lotBox;
   int? _expandedIndex; // เก็บ index ของการ์ดที่ถูกกด
   List<String> categories = ["ทั้งหมด"];
   String selectedCategory = "ทั้งหมด";
@@ -28,6 +30,8 @@ class _EditProductState extends State<EditProduct> {
     super.initState();
     productBox = Hive.box<ProductModel>('products');
     categoryBox = Hive.box<CategoryModel>('categories');
+    lotBox = Hive.box<LotModel>('lots');
+
     _loadData();
   }
 
@@ -231,8 +235,27 @@ class _EditProductState extends State<EditProduct> {
     );
   }
 
+List<LotModel> _getLotsForProduct(String productId) {
+  return lotBox!.values.where((lot) => lot.productId == productId).toList();
+}
+
+int _getTotalQuantity(String productId) {
+  return _getLotsForProduct(productId).fold(0, (sum, lot) => sum + lot.quantity);
+}
+
+String _getNearestExpiry(String productId) {
+  final lots = _getLotsForProduct(productId);
+  if (lots.isEmpty) return 'ไม่มีข้อมูล';
+  lots.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+  return "${lots.first.expiryDate.day.toString().padLeft(2, '0')}/"
+         "${lots.first.expiryDate.month.toString().padLeft(2, '0')}/"
+         "${lots.first.expiryDate.year}";
+}
+
+
   @override
   Widget build(BuildContext context) {
+    
     List<ProductModel> filteredProducts = selectedCategory == "ทั้งหมด"
         ? allProducts
         : allProducts
@@ -367,7 +390,7 @@ class _EditProductState extends State<EditProduct> {
                                                         ),
                                                       ),
                                                       Text(
-                                                        "${product.Retail_price} บาท",
+                                                        "${product.retailPrice} บาท",
                                                         style: const TextStyle(
                                                           fontSize: 16,
                                                           color: Color.fromARGB(
@@ -394,7 +417,7 @@ class _EditProductState extends State<EditProduct> {
                                                         ),
                                                       ),
                                                       Text(
-                                                        "ราคาส่ง: ${product.Wholesale_price} บาท",
+                                                        "ราคาส่ง: ${product.wholesalePrice} บาท",
                                                         style: const TextStyle(
                                                           fontSize: 14,
                                                           color: Colors.grey,
@@ -435,7 +458,7 @@ class _EditProductState extends State<EditProduct> {
                                                   Row(
                                                     children: [
                                                       Text(
-                                                        "จำนวน: ${product.quantity} ",
+                                                        "จำนวน: ${_getTotalQuantity(product.id)}",
                                                         style: const TextStyle(
                                                           fontSize: 14,
                                                           fontWeight:
@@ -448,7 +471,7 @@ class _EditProductState extends State<EditProduct> {
                                                   Row(
                                                     children: [
                                                       Text(
-                                                        "วันหมดอายุ: ${product.expiryDate ?? 'ไม่มีข้อมูล'}",
+                                                        "วันหมดอายุ: ${_getNearestExpiry(product.id)}",
                                                         style: const TextStyle(
                                                           fontSize: 14,
                                                           fontWeight:

@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import '../Database/product_model.dart';
+import '../Database/lot_model.dart';
 
 class EditPriceProduct extends StatefulWidget {
   const EditPriceProduct({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class EditPriceProduct extends StatefulWidget {
 
 class _EditPriceProductState extends State<EditPriceProduct> {
   Box<ProductModel>? productBox;
+  Box<LotModel>? lotBox;
   List<ProductModel> allProducts = [];
   int _selectedIndex = 0;
 
@@ -20,6 +22,7 @@ class _EditPriceProductState extends State<EditPriceProduct> {
   void initState() {
     super.initState();
     productBox = Hive.box<ProductModel>('products');
+    lotBox = Hive.box<LotModel>('lots');
     _loadProducts();
   }
 
@@ -32,9 +35,9 @@ class _EditPriceProductState extends State<EditPriceProduct> {
   /// ฟังก์ชันแก้ไขราคา: เปิด AlertDialog เพื่อแก้ไขราคาปลีกและราคาส่ง
   void _editPrice(ProductModel product) {
     TextEditingController retailPriceController =
-        TextEditingController(text: product.Retail_price.toString());
+        TextEditingController(text: product.retailPrice.toString());
     TextEditingController wholesalePriceController =
-        TextEditingController(text: product.Wholesale_price.toString());
+        TextEditingController(text: product.wholesalePrice.toString());
 
     showDialog(
       context: context,
@@ -74,14 +77,14 @@ class _EditPriceProductState extends State<EditPriceProduct> {
                   double.tryParse(wholesalePriceController.text);
               if (newRetail != null && newWholesale != null) {
                 final updatedProduct = ProductModel(
+                  id: product.id,
                   name: product.name,
-                  Retail_price: newRetail,
-                  Wholesale_price: newWholesale,
-                  quantity: product.quantity,
-                  expiryDate: product.expiryDate,
+                  retailPrice: newRetail,
+                  wholesalePrice: newWholesale,
                   category: product.category,
                   barcode: product.barcode,
                 );
+
                 int index = productBox!.values.toList().indexOf(product);
                 if (index != -1) {
                   productBox!.putAt(index, updatedProduct);
@@ -136,7 +139,9 @@ class _EditPriceProductState extends State<EditPriceProduct> {
                         color: Colors.black,
                       ),
                       children: [
-                        TextSpan(text: "${product.Retail_price} "),
+                        TextSpan(
+                            text:
+                                "${product.retailPrice} "), // เดิม Retail_price
                         const TextSpan(text: "ราคาปลีก"),
                       ],
                     ),
@@ -167,7 +172,9 @@ class _EditPriceProductState extends State<EditPriceProduct> {
                         color: Colors.grey,
                       ),
                       children: [
-                        TextSpan(text: "${product.Wholesale_price} "),
+                        TextSpan(
+                            text:
+                                "${product.wholesalePrice} "), // เดิม Wholesale_price
                         const TextSpan(text: "ราคาส่ง"),
                       ],
                     ),
