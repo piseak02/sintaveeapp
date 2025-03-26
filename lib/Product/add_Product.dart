@@ -9,7 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import '../Database/lot_model.dart';
 
-
 class MyAddProduct extends StatefulWidget {
   const MyAddProduct({super.key});
 
@@ -47,72 +46,86 @@ class _MyAddProductState extends State<MyAddProduct> {
     });
   }
 
-void _addProduct() async {
-  final name = _productNameController.text.trim();
-  final retailPrice = double.tryParse(_Retail_priceController.text) ?? 0;
-  final wholesalePrice = double.tryParse(_Wholesale_priceController.text) ?? 0;
-  final quantity = int.tryParse(_quantityController.text) ?? 0;
-  final expiryDateStr = _expiryDateController.text.trim();
-  final category = _selectedCategory ?? "ไม่ระบุ";
-  final barcode = _barcodeController.text.trim();
+  void _addProduct() async {
+    final name = _productNameController.text.trim();
+    final retailPrice = double.tryParse(_Retail_priceController.text) ?? 0;
+    final wholesalePrice =
+        double.tryParse(_Wholesale_priceController.text) ?? 0;
+    final quantity = int.tryParse(_quantityController.text) ?? 0;
+    final expiryDateStr = _expiryDateController.text.trim();
+    final category = _selectedCategory ?? "ไม่ระบุ";
+    final barcode = _barcodeController.text.trim();
 
-  if (name.isEmpty || expiryDateStr.isEmpty || quantity <= 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("กรุณากรอกข้อมูลให้ครบถ้วน")),
-    );
-    return;
+    if (name.isEmpty || expiryDateStr.isEmpty || quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณากรอกข้อมูลให้ครบถ้วน")),
+      );
+      return;
+    }
+
+    // ตรวจสอบสินค้าซ้ำ โดยเช็คชื่อและบาร์โค้ด (ถ้ามี)
+    bool duplicateExists = productBox!.values.any((product) =>
+        product.name.toLowerCase() == name.toLowerCase() ||
+        (barcode.isNotEmpty &&
+            product.barcode != null &&
+            product.barcode!.toLowerCase() == barcode.toLowerCase()));
+    if (duplicateExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("สินค้านี้มีอยู่แล้ว")),
+      );
+      return;
+    }
+
+    try {
+      final parts = expiryDateStr.split('/');
+      final expiryDate = DateTime(
+        int.parse(parts[2]),
+        int.parse(parts[1]),
+        int.parse(parts[0]),
+      );
+
+      // อ่าน counter id ปัจจุบันจาก Hive หรือใช้ 0 ถ้ายังไม่มี
+      final settingsBox = await Hive.openBox('settings');
+      int currentId = settingsBox.get('productIdCounter', defaultValue: 0);
+
+      final newProductId = (currentId + 1).toString();
+
+      final newProduct = ProductModel(
+        id: newProductId,
+        name: name,
+        retailPrice: retailPrice,
+        wholesalePrice: wholesalePrice,
+        category: category,
+        barcode: barcode,
+      );
+
+      await productBox!.add(newProduct);
+
+      final newLot = LotModel(
+        lotId: "LOT-${DateTime.now().millisecondsSinceEpoch}",
+        productId: newProductId,
+        quantity: quantity,
+        expiryDate: expiryDate,
+        recordDate: DateTime.now(),
+      );
+
+      final lotBox = Hive.box<LotModel>('lots');
+      await lotBox.add(newLot);
+
+      // บันทึก counter ใหม่กลับไป
+      await settingsBox.put('productIdCounter', currentId + 1);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เพิ่มสินค้าสำเร็จ")),
+      );
+
+      _clearFields();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เกิดข้อผิดพลาดในการบันทึก")),
+      );
+    }
   }
-
-  try {
-    final parts = expiryDateStr.split('/');
-    final expiryDate = DateTime(
-      int.parse(parts[2]),
-      int.parse(parts[1]),
-      int.parse(parts[0]),
-    );
-
-    // อ่าน counter id ปัจจุบันจาก Hive หรือใช้ 0 ถ้ายังไม่มี
-    final settingsBox = await Hive.openBox('settings');
-    int currentId = settingsBox.get('productIdCounter', defaultValue: 0);
-
-    final newProductId = (currentId + 1).toString(); // เช่น "1", "2", "3" ...
-
-    final newProduct = ProductModel(
-      id: newProductId,
-      name: name,
-      retailPrice: retailPrice,
-      wholesalePrice: wholesalePrice,
-      category: category,
-      barcode: barcode,
-    );
-
-    await productBox!.add(newProduct);
-
-    final newLot = LotModel(
-      lotId: "LOT-${DateTime.now().millisecondsSinceEpoch}",
-      productId: newProductId,
-      quantity: quantity,
-      expiryDate: expiryDate,
-      recordDate: DateTime.now(),
-    );
-
-    final lotBox = Hive.box<LotModel>('lots');
-    await lotBox.add(newLot);
-
-    // บันทึก counter ใหม่กลับไป
-    await settingsBox.put('productIdCounter', currentId + 1);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("เพิ่มสินค้าสำเร็จ")),
-    );
-
-    _clearFields();
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("บันทึก")),
-    );
-  }
-}
 
   void _clearFields() {
     _productNameController.clear();

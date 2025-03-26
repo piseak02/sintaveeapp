@@ -7,13 +7,20 @@ import '../Sale_Page/sale_product.dart';
 import '../Database/product_model.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:hive/hive.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class BottomNavbar extends StatelessWidget {
-  const BottomNavbar(
-      {super.key, required this.currentIndex, required this.onTap});
+  BottomNavbar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   final int currentIndex;
   final Function(int) onTap;
+
+  // ประกาศ AudioPlayer ที่นี่
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   void _handleNavigation(int index, BuildContext context) async {
     if (index == 0) {
@@ -27,7 +34,6 @@ class BottomNavbar extends StatelessWidget {
         MaterialPageRoute(builder: (context) => Myaccount()),
       );
     } else if (index == 2) {
-      // 👉 สแกนบาร์โค้ด แล้วไปหน้า SalePage พร้อมเพิ่มสินค้า
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -49,11 +55,14 @@ class BottomNavbar extends StatelessWidget {
         );
 
         if (matching.name != 'ไม่พบสินค้า') {
+          // 🔊 เล่นเสียง beep เมื่อพบสินค้า
+          await _audioPlayer.play(AssetSource('beep-313342.mp3'));
+
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => SalePage(
-                initialBarcode: result, // 👈 ส่ง barcode ไปหน้า SalePage
+                initialBarcode: result,
               ),
             ),
           );
@@ -72,7 +81,6 @@ class BottomNavbar extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => SupplierListPage()),
-        
       );
     } else {
       onTap(index);
@@ -84,29 +92,19 @@ class BottomNavbar extends StatelessWidget {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       backgroundColor:
-          const Color.fromARGB(230, 0, 0, 0), //  เปลี่ยนสีพื้นหลังของแถบบาร์
+          const Color.fromARGB(230, 0, 0, 0), // เปลี่ยนสีพื้นหลังของแถบบาร์
       showSelectedLabels: false,
       showUnselectedLabels: false,
       selectedItemColor: const Color.fromARGB(255, 235, 157, 40),
       unselectedItemColor: const Color.fromARGB(255, 228, 221, 221),
-      elevation: 0, //  ลดเงาของ BottomNavigationBar
+      elevation: 0, // ลดเงาของ BottomNavigationBar
       currentIndex: currentIndex,
       onTap: (index) => _handleNavigation(index, context),
       items: [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: "หน้าแรก"),
+        BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: "บัญชี"),
         BottomNavigationBarItem(
-            icon: Icon(
-              Icons.home,
-            ),
-            label: "หน้าแรก"),
-        BottomNavigationBarItem(
-            icon: Icon(
-              Icons.credit_card,
-            ),
-            label: "บัญชี"),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.qr_code_scanner),
-          label: "สแกนบาร์โค้ด",
-        ),
+            icon: Icon(Icons.qr_code_scanner), label: "สแกนบาร์โค้ด"),
         BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long), label: "บิลลูกค้า"),
         BottomNavigationBarItem(
@@ -115,4 +113,3 @@ class BottomNavbar extends StatelessWidget {
     );
   }
 }
-//

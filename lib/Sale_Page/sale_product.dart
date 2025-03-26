@@ -157,7 +157,7 @@ class _SalePageState extends State<SalePage> {
       // เล่นเสียงปี๊บ
       AudioPlayer player = AudioPlayer();
       // สมมุติว่าไฟล์เสียงปี๊บอยู่ใน assets/beep.mp3
-      await player.play(AssetSource('beep.mp3'));
+      await player.play(AssetSource('beep-313342.mp3'));
       // ดีเลย์ครึ่งวินาที
       await Future.delayed(const Duration(milliseconds: 500));
       _addProductToSale(result);

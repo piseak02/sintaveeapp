@@ -79,6 +79,7 @@ flutter:
     - assets/po1.png
     - assets/fonts/THSarabun.ttf
     - assets/logo1.png
+    - assets/beep-313342.mp3
     
 
   # To add assets to your application, add an assets section, like this:
