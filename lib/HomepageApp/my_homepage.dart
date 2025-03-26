@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
-import 'package:sintaveeapp/Database/log_model.dart';
 import 'package:sintaveeapp/Product/EditProduct.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
 import 'package:sintaveeapp/Product/list_product.dart';
@@ -8,10 +7,10 @@ import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 import 'package:sintaveeapp/Product/Edit_Price_Product.dart';
 import 'package:sintaveeapp/Product/Edit_Stock_Product.dart';
 import 'package:sintaveeapp/Product/list_exp_date_product.dart';
-import 'package:sintaveeapp/Log/log_service.dart';
 import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Database/lot_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:sintaveeapp/Supplier/add_supplier.dart';
 
 class MyHomepage extends StatefulWidget {
   const MyHomepage({super.key});
@@ -62,6 +61,7 @@ class _MyHomepagaState extends State<MyHomepage> {
       "สินค้าใกล้หมดอายุ": ExpiryRankingPage(), // ตัวอย่างหน้าสินค้าใกล้หมดอายุ
       "เพิ่มสต็อก": EditStockProduct(),
       "คำนวนราคา": SalePage(),
+      "เพิ่มบิล(ซัพพายเออร์)": add_Supplier(),
     };
 
     return GestureDetector(
@@ -122,8 +122,7 @@ class _MyHomepagaState extends State<MyHomepage> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -170,63 +169,12 @@ class _MyHomepagaState extends State<MyHomepage> {
           ],
         ),
         actions: [
-  ValueListenableBuilder(
-    valueListenable: Hive.box<LogModel>('logs').listenable(),
-    builder: (context, Box<LogModel> logBox, _) {
-      final logCount = logBox.values.length;
-      return GestureDetector(
-        onTap: () {
-          // นำทางไปยังหน้า NotificationsPage ที่แสดง log ทั้งหมด
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => NotificationsPage()),
-          );
-        },
-        child: Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications),
-              color: Colors.black,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => NotificationsPage()),
-                );
-              },
-            ),
-            if (logCount > 0)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: Center(
-                    child: Text(
-                      logCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  ),
-],
-
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            color: Colors.black,
+            onPressed: null, // Disable the button initially
+          ),
+        ],
       ),
       body: Container(
         width: double.infinity,
@@ -268,6 +216,10 @@ class _MyHomepagaState extends State<MyHomepage> {
               _buildShortcut(
                   icon: Icons.barcode_reader,
                   title: "คำนวนราคา",
+                  context: context),
+              _buildShortcut(
+                  icon: Icons.business,
+                  title: "เพิ่มบิล(ซัพพายเออร์)",
                   context: context),
             ],
           ),

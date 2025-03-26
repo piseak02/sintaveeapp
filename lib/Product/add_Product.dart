@@ -8,7 +8,6 @@ import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import '../Database/lot_model.dart';
-import 'package:sintaveeapp/Log/log_service.dart';
 
 
 class MyAddProduct extends StatefulWidget {
@@ -103,17 +102,14 @@ void _addProduct() async {
     // บันทึก counter ใหม่กลับไป
     await settingsBox.put('productIdCounter', currentId + 1);
 
-    // บันทึก log เมื่อเพิ่มสินค้าและล็อตสำเร็จ
-    await LogService.addLog("เพิ่มสินค้า: ${newProduct.name} (ID: $newProductId)", "add");
-
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("เพิ่มสินค้าพร้อมล็อตสำเร็จ")),
+      const SnackBar(content: Text("เพิ่มสินค้าสำเร็จ")),
     );
 
     _clearFields();
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("รูปแบบวันหมดอายุไม่ถูกต้อง")),
+      const SnackBar(content: Text("บันทึก")),
     );
   }
 }
@@ -461,7 +457,7 @@ void _addProduct() async {
                             keyboardType: TextInputType.number),
                         _buildTextField(
                           controller: _expiryDateController,
-                          label: "วันหมดอายุ (วัน/เดือน/ปี)",
+                          label: "วันหมดอายุ วัน/เดือน/ปี (ค.ศ.)",
                           keyboardType: TextInputType.number,
                           inputFormatters: [DateInputFormatter()],
                         ),

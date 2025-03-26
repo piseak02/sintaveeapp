@@ -26,12 +26,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
+import 'package:sintaveeapp/Database/supplier_model.dart';
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
 import 'Database/bill_model.dart';
 import 'Database/lot_model.dart';
+import 'Database/supplier_name_model.dart';
 import 'HomepageApp/my_homepage.dart';
-import 'Database/log_model.dart';
 
 Future<String> getDownloadsPath() async {
   Directory? downloadsDir;
@@ -67,13 +68,15 @@ void main() async {
   Hive.registerAdapter(BillItemAdapter());
   Hive.registerAdapter(BillModelAdapter());
   Hive.registerAdapter(LotModelAdapter());
-  Hive.registerAdapter(LogModelAdapter());
+  Hive.registerAdapter(SupplierModelAdapter());
+  Hive.registerAdapter(SupplierNameModelAdapter());
 
   await Hive.openBox<LotModel>('lots');
   await Hive.openBox<ProductModel>('products');
   await Hive.openBox<CategoryModel>('categories');
   await Hive.openBox<BillModel>('bills');
-  await Hive.openBox<LogModel>('logs');
+  await Hive.openBox<SupplierModel>('suppliers');
+  await Hive.openBox<SupplierNameModel>('supplierNames');
 
   runApp(MyApp());
 }

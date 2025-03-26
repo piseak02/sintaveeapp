@@ -1,41 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'log_model.dart';
+part of 'supplier_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class LogModelAdapter extends TypeAdapter<LogModel> {
+class SupplierModelAdapter extends TypeAdapter<SupplierModel> {
   @override
   final int typeId = 5;
 
   @override
-  LogModel read(BinaryReader reader) {
+  SupplierModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return LogModel(
-      logId: fields[0] as String,
-      message: fields[1] as String,
-      timestamp: fields[2] as DateTime,
-      eventType: fields[3] as String,
+    return SupplierModel(
+      name: fields[0] as String,
+      billImagePath: fields[1] as String?,
+      paymentAmount: fields[2] as double,
     );
   }
 
   @override
-  void write(BinaryWriter writer, LogModel obj) {
+  void write(BinaryWriter writer, SupplierModel obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.logId)
-      ..writeByte(1)
-      ..write(obj.message)
-      ..writeByte(2)
-      ..write(obj.timestamp)
       ..writeByte(3)
-      ..write(obj.eventType);
+      ..writeByte(0)
+      ..write(obj.name)
+      ..writeByte(1)
+      ..write(obj.billImagePath)
+      ..writeByte(2)
+      ..write(obj.paymentAmount);
   }
 
   @override
@@ -44,7 +41,7 @@ class LogModelAdapter extends TypeAdapter<LogModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is LogModelAdapter &&
+      other is SupplierModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

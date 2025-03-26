@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/AccountPageApp/account_page.dart';
+import 'package:sintaveeapp/Supplier/list_supplier.dart';
 import '../HomepageApp/my_homepage.dart';
 import '../Bill_Page/BillSale_Page.dart';
 import '../Sale_Page/sale_product.dart';
@@ -66,6 +67,12 @@ class BottomNavbar extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => BillSale_Page()),
+      );
+    } else if (index == 4) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => SupplierListPage()),
+        
       );
     } else {
       onTap(index);

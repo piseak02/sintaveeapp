@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import '../Database/product_model.dart';
 import '../Database/category_model.dart';
 import '../Bottoom_Navbar/bottom_navbar.dart';
 import '../Product/list_detailPage.dart';
 import '../Database/lot_model.dart';
+import '../widgets/castom_shapes/Containers/primary_header_container.dart';
 
 class List_Product extends StatefulWidget {
   const List_Product({super.key});
@@ -19,15 +19,11 @@ class _List_ProductState extends State<List_Product> {
   Box<ProductModel>? productBox;
   Box<CategoryModel>? categoryBox;
 
-  // ✅ ลบตัวแปร _expandedIndex
-  // int? _expandedIndex;
-
   List<String> categories = ["ทั้งหมด"];
   String selectedCategory = "ทั้งหมด";
   List<ProductModel> allProducts = [];
 
   String searchQuery = ""; // ข้อความค้นหา
-  bool showDropdown = false;
 
   int _selectedIndex = 0; // ตั้งค่าให้แท็บเริ่มต้นอยู่ที่หน้า "เมนูหลัก"
 
@@ -201,82 +197,136 @@ class _List_ProductState extends State<List_Product> {
                                   itemCount: filteredProducts.length,
                                   itemBuilder: (context, index) {
                                     var product = filteredProducts[index];
-
-                                    return Card(
-                                      elevation: 2,
-                                      color: Colors.white,
-                                      margin: const EdgeInsets.symmetric(
-                                        vertical: 5,
+                                    return Dismissible(
+                                      key: Key(product.id),
+                                      direction: DismissDirection.endToStart,
+                                      confirmDismiss: (direction) async {
+                                        return await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title: const Text("ยืนยันการลบ"),
+                                              content: Text(
+                                                  "คุณต้องการลบสินค้า \"${product.name}\" หรือไม่?"),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(false),
+                                                  child: const Text("ยกเลิก"),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(true),
+                                                  child: const Text("ลบ",
+                                                      style: TextStyle(
+                                                          color: Colors.red)),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      },
+                                      onDismissed: (direction) {
+                                        final int productIndex = productBox!
+                                            .values
+                                            .toList()
+                                            .indexOf(product);
+                                        if (productIndex != -1) {
+                                          productBox!.deleteAt(productIndex);
+                                        }
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  "ลบสินค้า ${product.name} เรียบร้อย")),
+                                        );
+                                        _loadData();
+                                      },
+                                      background: Container(
+                                        color: Colors.red,
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20),
+                                        child: const Icon(Icons.delete,
+                                            color: Colors.white),
                                       ),
-                                      child: InkWell(
-                                        // ✅ เมื่อกด -> ไปหน้าใหม่ ProductDetailPage
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ProductDetailPage(
-                                                product: product,
+                                      child: Card(
+                                        elevation: 2,
+                                        color: Colors.white,
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 5,
+                                        ),
+                                        child: InkWell(
+                                          // เมื่อกด -> ไปหน้าใหม่ ProductDetailPage
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ProductDetailPage(
+                                                  product: product,
+                                                ),
                                               ),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // ชื่อสินค้า + ราคาปลีก
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      product.name,
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "${product.retailPrice} บาท",
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.black,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 5),
+                                                // หมวดหมู่ + ราคาส่ง
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      "หมวดหมู่: ${product.category}",
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "ราคาส่ง: ${product.wholesalePrice} บาท",
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
-                                          );
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              // ชื่อสินค้า + ราคาปลีก
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    product.name,
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    "${product.retailPrice} บาท",
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      color: Colors.black,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 5),
-
-                                              // หมวดหมู่ + ราคาส่ง
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    "หมวดหมู่: ${product.category}",
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    "ราคาส่ง: ${product.wholesalePrice} บาท",
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
                                           ),
                                         ),
                                       ),

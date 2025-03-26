@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../Database/bill_model.dart';
 import '../Database/lot_model.dart';
 import '../Bill_Page/bill_detail_page.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 /// Model สำหรับรายการขาย (SaleItem)
 class SaleItem {
@@ -149,11 +150,16 @@ class _SalePageState extends State<SalePage> {
   Future<void> _scanBarcode() async {
     final result = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-          builder: (context) => const SimpleBarcodeScannerPage()),
+      MaterialPageRoute(builder: (context) => const SimpleBarcodeScannerPage()),
     );
 
     if (result != null && result != '-1') {
+      // เล่นเสียงปี๊บ
+      AudioPlayer player = AudioPlayer();
+      // สมมุติว่าไฟล์เสียงปี๊บอยู่ใน assets/beep.mp3
+      await player.play(AssetSource('beep.mp3'));
+      // ดีเลย์ครึ่งวินาที
+      await Future.delayed(const Duration(milliseconds: 500));
       _addProductToSale(result);
     }
   }
@@ -267,8 +273,10 @@ class _SalePageState extends State<SalePage> {
     for (var saleItem in _saleItems) {
       int quantityToDeduct = saleItem.saleQuantity;
       // ดึงรายการล็อตสำหรับสินค้านี้จาก lotBox แบบ key-value pair
-      final lotEntries = _lotBox.toMap().entries
-          .where((entry) => (entry.value as LotModel).productId == saleItem.product.id)
+      final lotEntries = _lotBox
+          .toMap()
+          .entries
+          .where((entry) => (entry.value).productId == saleItem.product.id)
           .toList();
       // เรียงล็อตตามวันหมดอายุจากน้อยไปมาก (FIFO)
       lotEntries.sort((a, b) {
@@ -302,25 +310,55 @@ class _SalePageState extends State<SalePage> {
 
   /// Popup รับเงินและชำระเงิน (หลังจากชำระเงิน จะเปลี่ยนหน้าไปยัง BillDetailPage)
   void _showPaymentDialog() {
+    bool _showDiscountField = false;
+    final TextEditingController _discountController = TextEditingController();
     final moneyController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("ชำระเงิน"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("ยอดรวมสุทธิ: ${_grandTotal.toStringAsFixed(2)} บาท"),
-            const SizedBox(height: 16),
-            TextField(
-              controller: moneyController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "จำนวนเงินที่รับ",
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setStatePopup) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("ยอดรวมสุทธิ: ${_grandTotal.toStringAsFixed(2)} บาท"),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: moneyController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "จำนวนเงินที่รับ",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // ปุ่มส่วนลด
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () {
+                      setStatePopup(() {
+                        _showDiscountField = !_showDiscountField;
+                      });
+                    },
+                    child: const Text("ส่วนลด",
+                        style: TextStyle(fontSize: 16, color: Colors.blue)),
+                  ),
+                ),
+                // ช่องกรอกส่วนลด (แสดงเมื่อ _showDiscountField เป็น true)
+                if (_showDiscountField)
+                  TextField(
+                    controller: _discountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: "กรอกส่วนลด",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -330,6 +368,11 @@ class _SalePageState extends State<SalePage> {
           ElevatedButton(
             onPressed: () async {
               final double? pay = double.tryParse(moneyController.text);
+              // อ่านส่วนลดจาก _discountController ถ้ามี
+              final double discountInput = _discountController.text.isNotEmpty
+                  ? double.tryParse(_discountController.text) ?? 0.0
+                  : 0.0;
+
               if (pay == null || pay.isNaN) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
@@ -347,20 +390,22 @@ class _SalePageState extends State<SalePage> {
                   double price = _useWholesale
                       ? saleItem.product.wholesalePrice
                       : saleItem.product.retailPrice;
+                  // ใช้ discountInput สำหรับแต่ละรายการ (คุณอาจปรับวิธีคำนวณได้ตามที่ต้องการ)
                   return BillItem(
                     productName: saleItem.product.name,
                     price: price,
                     quantity: saleItem.saleQuantity,
-                    discount: 0.0,
+                    discount: discountInput,
                   );
                 }).toList();
 
-                // สร้าง BillModel ใหม่
+                // สร้าง BillModel ใหม่ (กำหนด totalDiscount เป็น discountInput * จำนวนรายการ)
+                final totalDiscount = discountInput * _saleItems.length;
                 final newBill = BillModel(
                   billId: "BILL-${DateTime.now().millisecondsSinceEpoch}",
                   billDate: DateTime.now(),
                   items: billItems,
-                  totalDiscount: 0.0,
+                  totalDiscount: totalDiscount,
                   netTotal: _grandTotal,
                   moneyReceived: pay,
                   change: change,
@@ -390,6 +435,8 @@ class _SalePageState extends State<SalePage> {
                 // เคลียร์รายการขาย
                 setState(() {
                   _saleItems.clear();
+                  _discountController.clear();
+                  _showDiscountField = false;
                 });
               }
             },
