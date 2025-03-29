@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
+import 'package:sintaveeapp/Import_Export_File/import_export_file.dart';
 import 'package:sintaveeapp/Product/EditProduct.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
 import 'package:sintaveeapp/Product/list_product.dart';
@@ -11,6 +12,8 @@ import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Database/lot_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
+import 'package:sintaveeapp/Printer/printer_connection.dart';
+
 
 class MyHomepage extends StatefulWidget {
   const MyHomepage({super.key});
@@ -59,9 +62,10 @@ class _MyHomepagaState extends State<MyHomepage> {
       "แสดงรายการ": List_Product(),
       "แก้ไขราคา": EditPriceProduct(),
       "สินค้าใกล้หมดอายุ": ExpiryRankingPage(), // ตัวอย่างหน้าสินค้าใกล้หมดอายุ
-      "เพิ่มสต็อก": EditStockProduct(),
+      "จัดการสต็อก": EditStockProduct(),
       "คำนวนราคา": SalePage(),
       "เพิ่มบิล(ซัพพายเออร์)": add_Supplier(),
+      "รับข้อมูล/ส่งออกข้อมูล": ImportExportPage(),
     };
 
     return GestureDetector(
@@ -134,48 +138,64 @@ class _MyHomepagaState extends State<MyHomepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 10,
-        toolbarHeight: 70,
-        centerTitle: false,
-        title: Row(
-          children: const [
-            Icon(
-              Icons.person,
-              size: 40,
+  titleSpacing: 10,
+  toolbarHeight: 70,
+  centerTitle: false,
+  title: Row(
+    children: const [
+      Icon(
+        Icons.person,
+        size: 40,
+        color: Colors.black,
+      ),
+      SizedBox(width: 20),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "ยินดีต้อนรับ",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
-            SizedBox(width: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "ยินดีต้อนรับ",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  "ภิเษก",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            "ภิเษก",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            color: Colors.black,
-            onPressed: null, // Disable the button initially
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
+    ],
+  ),
+  actions: [
+    // ปุ่มเครื่องปริ้น เพิ่มเข้ามาข้างๆ ปุ่มกระดิ่ง
+    IconButton(
+      icon: const Icon(Icons.print, color: Colors.black),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PrinterConnectionPage(),
+          ),
+        );
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.notifications),
+      color: Colors.black,
+      onPressed: () {
+        // ตัวอย่างโค้ดสำหรับปุ่มแจ้งเตือน
+      },
+    ),
+  ],
+),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -211,7 +231,7 @@ class _MyHomepagaState extends State<MyHomepage> {
                   context: context),
               _buildShortcut(
                   icon: Icons.production_quantity_limits_sharp,
-                  title: "เพิ่มสต็อก",
+                  title: "จัดการสต็อก",
                   context: context),
               _buildShortcut(
                   icon: Icons.barcode_reader,
@@ -220,6 +240,10 @@ class _MyHomepagaState extends State<MyHomepage> {
               _buildShortcut(
                   icon: Icons.business,
                   title: "เพิ่มบิล(ซัพพายเออร์)",
+                  context: context),
+              _buildShortcut(
+                  icon: Icons.file_upload,
+                  title: "รับข้อมูล/ส่งออกข้อมูล",
                   context: context),
             ],
           ),

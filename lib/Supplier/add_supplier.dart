@@ -115,25 +115,23 @@ class _addSupplierState extends State<add_Supplier> {
 
   /// ค้นหาชื่อซัพพายเออร์ (แสดง dialog พร้อมปุ่มลบในผลลัพธ์)
   void _showSearchDialog() {
-    // ดึงข้อมูล Supplier ทั้งหมดจาก Hive ก่อนเปิด dialog
-    List<SupplierModel> allSuppliers =
-        _supplierBox.values.toList().cast<SupplierModel>();
+    final nameBox = Hive.box<SupplierNameModel>('supplierNames');
+    List<SupplierNameModel> allNames = nameBox.values.toList();
 
     showDialog(
       context: context,
       builder: (context) {
         String query = '';
-        // กำหนดค่าเริ่มต้นให้ searchResults เป็นรายการทั้งหมด
-        List<SupplierModel> searchResults = List.from(allSuppliers);
+        List<SupplierNameModel> searchResults = List.from(allNames);
 
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             void doSearch(String val) {
               query = val;
               if (query.isEmpty) {
-                searchResults = List.from(allSuppliers);
+                searchResults = List.from(allNames);
               } else {
-                searchResults = allSuppliers
+                searchResults = allNames
                     .where((s) =>
                         s.name.toLowerCase().contains(query.toLowerCase()))
                     .toList();
@@ -141,21 +139,21 @@ class _addSupplierState extends State<add_Supplier> {
               setStateDialog(() {});
             }
 
-            void deleteSupplier(SupplierModel supplier) {
-              int index = allSuppliers.indexOf(supplier);
+            void deleteName(SupplierNameModel nameModel) {
+              final index = allNames.indexOf(nameModel);
               if (index != -1) {
-                _supplierBox.deleteAt(index);
-                allSuppliers.removeAt(index);
-                searchResults.remove(supplier);
+                nameBox.deleteAt(index);
+                allNames.removeAt(index);
+                searchResults.remove(nameModel);
                 setState(() {
-                  _supplierNames.remove(supplier.name);
-                  if (_selectedSupplierName == supplier.name) {
+                  _supplierNames.remove(nameModel.name);
+                  if (_selectedSupplierName == nameModel.name) {
                     _selectedSupplierName = null;
                   }
                 });
                 setStateDialog(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("ลบ \"${supplier.name}\" เรียบร้อย")),
+                  SnackBar(content: Text('ลบ "${nameModel.name}" เรียบร้อย')),
                 );
               }
             }
@@ -173,7 +171,6 @@ class _addSupplierState extends State<add_Supplier> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // ใช้ SizedBox ที่มีความสูงคงที่ 300 หน่วย สำหรับผลลัพธ์การค้นหา
                   SizedBox(
                     width: double.maxFinite,
                     height: 300,
@@ -196,9 +193,7 @@ class _addSupplierState extends State<add_Supplier> {
                                   trailing: IconButton(
                                     icon: const Icon(Icons.delete,
                                         color: Colors.red),
-                                    onPressed: () {
-                                      deleteSupplier(supplier);
-                                    },
+                                    onPressed: () => deleteName(supplier),
                                   ),
                                 ),
                               );

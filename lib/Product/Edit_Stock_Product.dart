@@ -19,6 +19,11 @@ class _EditStockProductState extends State<EditStockProduct> {
   Box<LotModel>? lotBox;
   int _selectedIndex = 0;
 
+  // Controller สำหรับค้นหาและแจ้งเตือน
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _alertController = TextEditingController();
+  bool _showAlertConditionField = false;
+
   @override
   void initState() {
     super.initState();
@@ -140,7 +145,8 @@ class _EditStockProductState extends State<EditStockProduct> {
               }
               final now = DateTime.now();
               // สร้าง lotId จากวันที่จริง (ปี เดือน วัน ชั่วโมง นาที วินาที)
-              final lotId = "LOT-${now.year}${now.month.toString().padLeft(2, '0')}"
+              final lotId =
+                  "LOT-${now.year}${now.month.toString().padLeft(2, '0')}"
                   "${now.day.toString().padLeft(2, '0')}"
                   "${now.hour.toString().padLeft(2, '0')}"
                   "${now.minute.toString().padLeft(2, '0')}"
@@ -169,9 +175,243 @@ class _EditStockProductState extends State<EditStockProduct> {
     );
   }
 
+  /// ฟังก์ชันแสดงรายละเอียดล็อตของสินค้าในป๊อปอัป
+  /// ฟังก์ชันแสดงรายละเอียดล็อตของสินค้าในป๊อปอัป พร้อมปุ่มแก้ไขและลบ
+  void _showLotDetails(ProductModel product) {
+    // ดึงรายการ Lot ที่มี productId ตรงกับสินค้านั้น
+    List<LotModel> lotsForProduct =
+        lotBox!.values.where((lot) => lot.productId == product.id).toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("รายละเอียดล็อตสำหรับ ${product.name}"),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: lotsForProduct.isEmpty
+              ? const Center(child: Text("ไม่มีข้อมูลล็อตสำหรับสินค้านี้"))
+              : ListView.builder(
+                  itemCount: lotsForProduct.length,
+                  itemBuilder: (context, index) {
+                    final lot = lotsForProduct[index];
+                    String expiry =
+                        "${lot.expiryDate.day.toString().padLeft(2, '0')}/"
+                        "${lot.expiryDate.month.toString().padLeft(2, '0')}/"
+                        "${lot.expiryDate.year}";
+                    return ListTile(
+                      title: Text("ล็อต: ${lot.lotId}"),
+                      subtitle:
+                          Text("จำนวน: ${lot.quantity} - หมดอายุ: $expiry"),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ปุ่มแก้ไขล็อต
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              Navigator.pop(context); // ปิด Dialog แรกก่อน
+                              _editLot(lot);
+                            },
+                          ),
+                          // ปุ่มลบล็อต
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              _deleteLot(lot);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("ปิด"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ฟังก์ชันแก้ไข Lot (เปิดป๊อปอัปสำหรับแก้ไข)
+  void _editLot(LotModel lot) {
+    // ดึง key ของ Lot นั้นจาก lotBox
+    final lotMap = lotBox!.toMap();
+    final key = lotMap.keys.firstWhere(
+        (k) => lotBox!.get(k)?.lotId == lot.lotId,
+        orElse: () => null);
+    if (key == null) return;
+
+    final TextEditingController quantityController =
+        TextEditingController(text: lot.quantity.toString());
+    final TextEditingController expiryController = TextEditingController(
+        text:
+            "${lot.expiryDate.day.toString().padLeft(2, '0')}/${lot.expiryDate.month.toString().padLeft(2, '0')}/${lot.expiryDate.year}");
+    final TextEditingController noteController =
+        TextEditingController(text: lot.note ?? "");
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("แก้ไขล็อต: ${lot.lotId}"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ช่องแก้ไขจำนวน
+              TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "จำนวนสินค้า",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // ช่องแก้ไขวันหมดอายุ
+              TextField(
+                controller: expiryController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "วันหมดอายุ (วว/ดด/ปปปป)",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                inputFormatters: [DateInputFormatter()],
+              ),
+              const SizedBox(height: 10),
+              // ช่องแก้ไขหมายเหตุ
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(
+                  labelText: "หมายเหตุ (ถ้ามี)",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("ยกเลิก"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final quantityText = quantityController.text;
+              final expiryText = expiryController.text;
+              if (quantityText.isEmpty || expiryText.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("กรุณากรอกข้อมูลให้ครบถ้วน")),
+                );
+                return;
+              }
+              final int? newQuantity = int.tryParse(quantityText);
+              if (newQuantity == null || newQuantity <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("จำนวนต้องมากกว่า 0")),
+                );
+                return;
+              }
+              final expiryParts = expiryText.split('/');
+              if (expiryParts.length != 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("รูปแบบวันหมดอายุไม่ถูกต้อง")),
+                );
+                return;
+              }
+              final day = int.tryParse(expiryParts[0]);
+              final month = int.tryParse(expiryParts[1]);
+              final year = int.tryParse(expiryParts[2]);
+              if (day == null || month == null || year == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("ไม่สามารถแปลงวันหมดอายุ")),
+                );
+                return;
+              }
+              DateTime newExpiryDate;
+              try {
+                newExpiryDate = DateTime(year, month, day);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("วันที่ไม่ถูกต้อง")),
+                );
+                return;
+              }
+              final newNote = noteController.text.trim();
+              final updatedLot = LotModel(
+                lotId: lot.lotId,
+                productId: lot.productId,
+                quantity: newQuantity,
+                expiryDate: newExpiryDate,
+                recordDate: lot.recordDate, // เก็บวันที่บันทึกเดิม
+                note: newNote.isEmpty ? null : newNote,
+              );
+              await lotBox!.put(key, updatedLot);
+              setState(() {}); // รีเฟรช UI
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("แก้ไขล็อตเรียบร้อย")),
+              );
+            },
+            child: const Text("บันทึก"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ฟังก์ชันลบ Lot
+  void _deleteLot(LotModel lot) async {
+    final lotMap = lotBox!.toMap();
+    final key = lotMap.keys.firstWhere(
+        (k) => lotBox!.get(k)?.lotId == lot.lotId,
+        orElse: () => null);
+    if (key == null) return;
+
+    bool? confirmed = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("ยืนยันการลบ"),
+        content: Text("คุณต้องการลบล็อต ${lot.lotId} หรือไม่?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("ยกเลิก"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("ลบ", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await lotBox!.delete(key);
+      setState(() {}); // รีเฟรช UI
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ลบล็อตเรียบร้อย")),
+      );
+    }
+  }
+
   /// สร้างการ์ดสำหรับแต่ละรายการสินค้า (แสดงชื่อ, จำนวนคงเหลือ จาก LotModel, และหมวดหมู่)
   Widget _buildProductCard(ProductModel product) {
+    int totalQuantity = _getTotalQuantity(product.id);
+    int? alertThreshold = int.tryParse(_alertController.text);
+    bool highlight = alertThreshold != null &&
+        alertThreshold > 0 &&
+        totalQuantity < alertThreshold;
+
     return Card(
+      color: highlight ? Colors.red[100] : null,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       elevation: 3,
       child: Padding(
@@ -179,7 +419,7 @@ class _EditStockProductState extends State<EditStockProduct> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // แถวแรก: ชื่อสินค้า, จำนวนคงเหลือ, และไอคอนแก้ไข (เพิ่มล็อต)
+            // แถวแรก: ชื่อสินค้า, จำนวนคงเหลือ
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -188,19 +428,9 @@ class _EditStockProductState extends State<EditStockProduct> {
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      "จำนวน: ${_getTotalQuantity(product.id)}",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () {
-                        _editStock(product);
-                      },
-                    ),
-                  ],
+                Text(
+                  "จำนวน: $totalQuantity",
+                  style: const TextStyle(fontSize: 16),
                 ),
               ],
             ),
@@ -210,6 +440,27 @@ class _EditStockProductState extends State<EditStockProduct> {
               "หมวดหมู่: ${product.category}",
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
+            const SizedBox(height: 8),
+            // แถวปุ่ม สำหรับเพิ่มสต๊อก และ แก้ไขสต๊อก
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // ปุ่มเพิ่มสต็อก (เปลี่ยนไอคอนเป็น Icons.add)
+                IconButton(
+                  icon: const Icon(Icons.add, color: Colors.green),
+                  onPressed: () {
+                    _editStock(product);
+                  },
+                ),
+                // ปุ่มแก้ไขสต๊อก (แสดงรายการ Lot)
+                IconButton(
+                  icon: const Icon(Icons.list, color: Colors.blue),
+                  onPressed: () {
+                    _showLotDetails(product);
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -218,6 +469,23 @@ class _EditStockProductState extends State<EditStockProduct> {
 
   @override
   Widget build(BuildContext context) {
+    // เริ่มต้นกรองสินค้าจากช่องค้นหา
+    List<ProductModel> filteredProducts = allProducts.where((product) {
+      return product.name
+          .toLowerCase()
+          .contains(_searchController.text.toLowerCase());
+    }).toList();
+
+    // ถ้ามีการกรอกเงื่อนไขแจ้งเตือน ให้กรองสินค้าเพิ่มเติม
+    if (_alertController.text.isNotEmpty) {
+      final int? threshold = int.tryParse(_alertController.text);
+      if (threshold != null) {
+        filteredProducts = filteredProducts
+            .where((product) => _getTotalQuantity(product.id) < threshold)
+            .toList();
+      }
+    }
+
     return Scaffold(
       body: Column(
         children: [
@@ -226,7 +494,8 @@ class _EditStockProductState extends State<EditStockProduct> {
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                "แก้ไขจำนวนสินค้า",
+                "จัดการสต็อกสินค้า",
+                textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -234,14 +503,69 @@ class _EditStockProductState extends State<EditStockProduct> {
               ),
             ),
           ),
+          // ช่องค้นหาและเงื่อนไขแจ้งเตือน
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // ช่องค้นหาสินค้า
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: "ค้นหาสินค้า",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    prefixIcon: const Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    setState(() {}); // รีเฟรช UI เมื่อค้นหา
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Label สำหรับ "กำหนดเงื่อนไขแจ้งเตือน"
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _showAlertConditionField = !_showAlertConditionField;
+                      });
+                    },
+                    child: const Text(
+                      "กำหนดเงื่อนไขแจ้งเตือน",
+                      style: TextStyle(fontSize: 16, color: Colors.blue),
+                    ),
+                  ),
+                ),
+                // ช่องกรอกเงื่อนไขแจ้งเตือน (เฉพาะเมื่อ _showAlertConditionField เป็น true)
+                if (_showAlertConditionField)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: TextField(
+                      controller: _alertController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "แจ้งเตือนเมื่อจำนวนสินค้าน้อยกว่า",
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(
+                            () {}); // รีเฟรช UI เพื่อแสดงสินค้าที่ต่ำกว่าเงื่อนไข
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
           // รายการสินค้าใน ListView
           Expanded(
-            child: allProducts.isEmpty
+            child: filteredProducts.isEmpty
                 ? const Center(child: Text("ไม่มีสินค้า"))
                 : ListView.builder(
-                    itemCount: allProducts.length,
+                    itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
-                      final product = allProducts[index];
+                      final product = filteredProducts[index];
                       return _buildProductCard(product);
                     },
                   ),

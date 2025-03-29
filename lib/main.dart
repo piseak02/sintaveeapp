@@ -32,6 +32,7 @@ import 'Database/category_model.dart';
 import 'Database/bill_model.dart';
 import 'Database/lot_model.dart';
 import 'Database/supplier_name_model.dart';
+import 'Database/printer_connection_model.dart';
 import 'HomepageApp/my_homepage.dart';
 
 Future<String> getDownloadsPath() async {
@@ -70,6 +71,7 @@ void main() async {
   Hive.registerAdapter(LotModelAdapter());
   Hive.registerAdapter(SupplierModelAdapter());
   Hive.registerAdapter(SupplierNameModelAdapter());
+  Hive.registerAdapter(PrinterConnectionModelAdapter());
 
   await Hive.openBox<LotModel>('lots');
   await Hive.openBox<ProductModel>('products');
@@ -77,6 +79,7 @@ void main() async {
   await Hive.openBox<BillModel>('bills');
   await Hive.openBox<SupplierModel>('suppliers');
   await Hive.openBox<SupplierNameModel>('supplierNames');
+  await Hive.openBox<PrinterConnectionModel>('printerBox');
 
   runApp(MyApp());
 }
@@ -90,6 +93,7 @@ class MyApp extends StatelessWidget {
       ),
       title: "หน้าแรก",
       home: MyHomepage(),
+      // home: MyHomepage(),
     );
   }
 }

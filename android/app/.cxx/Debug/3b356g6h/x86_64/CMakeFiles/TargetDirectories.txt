@@ -1,0 +1,2 @@
+D:/FlutterProject/sintaveeapp/android/app/.cxx/Debug/3b356g6h/x86_64/CMakeFiles/edit_cache.dir
+D:/FlutterProject/sintaveeapp/android/app/.cxx/Debug/3b356g6h/x86_64/CMakeFiles/rebuild_cache.dir

@@ -20,19 +20,22 @@ class SupplierModelAdapter extends TypeAdapter<SupplierModel> {
       name: fields[0] as String,
       billImagePath: fields[1] as String?,
       paymentAmount: fields[2] as double,
+      recordDate: fields[3] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, SupplierModel obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.billImagePath)
       ..writeByte(2)
-      ..write(obj.paymentAmount);
+      ..write(obj.paymentAmount)
+      ..writeByte(3)
+      ..write(obj.recordDate);
   }
 
   @override

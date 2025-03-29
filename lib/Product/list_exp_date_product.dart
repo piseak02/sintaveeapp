@@ -32,9 +32,10 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
   void _loadLots() {
     setState(() {
       lots = lotBox!.values.toList();
-      lots.sort((a, b) =>
-          a.expiryDate.difference(DateTime.now()).inDays.compareTo(
-              b.expiryDate.difference(DateTime.now()).inDays));
+      lots.sort((a, b) => a.expiryDate
+          .difference(DateTime.now())
+          .inDays
+          .compareTo(b.expiryDate.difference(DateTime.now()).inDays));
     });
   }
 
@@ -54,8 +55,9 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
     // กรองล็อตตาม search query และตัวกรองวันหมดอายุ
     List<LotModel> filteredLots = lots.where((lot) {
       String productName = _getProductName(lot.productId);
-      bool matchesSearch = productName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          lot.lotId.toLowerCase().contains(searchQuery.toLowerCase());
+      bool matchesSearch =
+          productName.toLowerCase().contains(searchQuery.toLowerCase()) ||
+              lot.lotId.toLowerCase().contains(searchQuery.toLowerCase());
       int daysLeft = lot.expiryDate.difference(now).inDays;
       bool matchesFilter = true;
       if (selectedFilter != "ทั้งหมด") {
@@ -66,9 +68,10 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
     }).toList();
 
     // เรียงลำดับล็อตตามจำนวนวันเหลือก่อนหมด (น้อยสุดก่อน)
-    filteredLots.sort((a, b) =>
-        a.expiryDate.difference(now).inDays.compareTo(
-            b.expiryDate.difference(now).inDays));
+    filteredLots.sort((a, b) => a.expiryDate
+        .difference(now)
+        .inDays
+        .compareTo(b.expiryDate.difference(now).inDays));
 
     return Scaffold(
       appBar: AppBar(
@@ -86,7 +89,7 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                 });
               },
               decoration: InputDecoration(
-                labelText: "ค้นหา (ชื่อสินค้า, Lot ID)",
+                labelText: "ค้นหา (ชื่อสินค้า)",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -146,7 +149,8 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                             color: Colors.red,
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: const Icon(Icons.delete, color: Colors.white),
+                            child:
+                                const Icon(Icons.delete, color: Colors.white),
                           ),
                           confirmDismiss: (direction) async {
                             return await showDialog<bool>(
@@ -154,7 +158,8 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                                   builder: (BuildContext context) {
                                     return AlertDialog(
                                       title: const Text("ยืนยันการลบ"),
-                                      content: Text("ต้องการลบล็อต \"${lot.lotId}\" หรือไม่?"),
+                                      content: Text(
+                                          "ต้องการลบล็อต \"${lot.lotId}\" หรือไม่?"),
                                       actions: [
                                         TextButton(
                                           onPressed: () =>
@@ -165,7 +170,8 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                                           onPressed: () =>
                                               Navigator.of(context).pop(true),
                                           child: const Text("ลบ",
-                                              style: TextStyle(color: Colors.red)),
+                                              style:
+                                                  TextStyle(color: Colors.red)),
                                         ),
                                       ],
                                     );
@@ -176,37 +182,59 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                           onDismissed: (direction) async {
                             // ค้นหา index ใน box ของ lotBox และลบออก
                             final allLots = lotBox!.values.toList();
-                            int deleteIndex = allLots.indexWhere((l) => l.lotId == lot.lotId);
+                            int deleteIndex =
+                                allLots.indexWhere((l) => l.lotId == lot.lotId);
                             if (deleteIndex != -1) {
                               await lotBox!.deleteAt(deleteIndex);
                               setState(() {
                                 _loadLots();
                               });
                               ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("ลบล็อต \"${lot.lotId}\" เรียบร้อย")));
+                                  SnackBar(
+                                      content: Text(
+                                          "ลบล็อต \"${lot.lotId}\" เรียบร้อย")));
                             }
                           },
                           child: Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                child: Text((index + 1).toString()),
-                              ),
-                              title: Text(lot.lotId),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("สินค้า: ${_getProductName(lot.productId)}"),
-                                  Text("จำนวน: ${lot.quantity}"),
-                                  Text("วันหมดอายุ: $expiryText"),
-                                  Text("วันที่บันทึก: $recordText"),
-                                  Text("เหลืออีก: $daysLeft วัน"),
-                                  if (lot.note != null && lot.note!.isNotEmpty)
-                                    Text("หมายเหตุ: ${lot.note}"),
-                                ],
-                              ),
-                            ),
-                          ),
+  color: daysLeft <= 30 ? Colors.red[100] : null, // สีพื้นการ์ดถ้าใกล้หมดอายุ
+  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  child: ListTile(
+    leading: Stack(
+      alignment: Alignment.topRight,
+      children: [
+        CircleAvatar(
+          backgroundColor: daysLeft <= 30 ? Colors.red : null,
+          foregroundColor: daysLeft <= 30 ? Colors.white : null,
+          child: Text((index + 1).toString()),
+        ),
+        if (daysLeft <= 30)
+          const Icon(Icons.warning_amber_rounded,
+              color: Colors.red, size: 18), // ไอคอนเตือนเล็ก ๆ มุมบนขวา
+      ],
+    ),
+    title: Text(
+      "สินค้า: ${_getProductName(lot.productId)}",
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("จำนวน: ${lot.quantity}"),
+        Text("วันหมดอายุ: $expiryText"),
+        Text("วันที่บันทึก: $recordText"),
+        Text(
+          "เหลืออีก: $daysLeft วัน",
+          style: TextStyle(
+            color: daysLeft <= 30 ? Colors.red : Colors.black,
+            fontWeight: daysLeft <= 30 ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        if (lot.note != null && lot.note!.isNotEmpty)
+          Text("หมายเหตุ: ${lot.note}"),
+      ],
+    ),
+  ),
+),
                         );
                       },
                     ),

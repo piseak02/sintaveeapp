@@ -310,140 +310,156 @@ class _SalePageState extends State<SalePage> {
 
   /// Popup รับเงินและชำระเงิน (หลังจากชำระเงิน จะเปลี่ยนหน้าไปยัง BillDetailPage)
   void _showPaymentDialog() {
-    bool _showDiscountField = false;
     final TextEditingController _discountController = TextEditingController();
-    final moneyController = TextEditingController();
+    final TextEditingController moneyController = TextEditingController();
+    // ตัวแปรสำหรับควบคุมการแสดงช่องส่วนลดท้ายบิล (default: hidden)
+    bool _showDiscountField = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("ชำระเงิน"),
-        content: StatefulBuilder(
+      builder: (context) {
+        return StatefulBuilder(
           builder: (context, setStatePopup) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("ยอดรวมสุทธิ: ${_grandTotal.toStringAsFixed(2)} บาท"),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: moneyController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "จำนวนเงินที่รับ",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // ปุ่มส่วนลด
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () {
-                      setStatePopup(() {
-                        _showDiscountField = !_showDiscountField;
-                      });
-                    },
-                    child: const Text("ส่วนลด",
-                        style: TextStyle(fontSize: 16, color: Colors.blue)),
-                  ),
-                ),
-                // ช่องกรอกส่วนลด (แสดงเมื่อ _showDiscountField เป็น true)
-                if (_showDiscountField)
+            return AlertDialog(
+              title: const Text("ชำระเงิน"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // แสดงยอดรวมก่อนหักส่วนลด (รวมทั้งสิ้น)
+                  Text("รวมทั้งสิ้น: ${_grandTotal.toStringAsFixed(2)} บาท"),
+                  const SizedBox(height: 16),
+                  // ช่องรับจำนวนเงินที่รับ
                   TextField(
-                    controller: _discountController,
+                    controller: moneyController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: "กรอกส่วนลด",
+                      labelText: "จำนวนเงินที่รับ",
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  // Label สำหรับแสดงหรือซ่อนช่องส่วนลดท้ายบิล
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () {
+                        setStatePopup(() {
+                          _showDiscountField = !_showDiscountField;
+                        });
+                      },
+                      child: const Text("ส่วนลดท้ายบิล",
+                          style: TextStyle(fontSize: 16, color: Colors.blue)),
+                    ),
+                  ),
+                  // แสดงช่องกรอกส่วนลดท้ายบิลเฉพาะเมื่อ _showDiscountField เป็น true
+                  if (_showDiscountField)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: TextField(
+                        controller: _discountController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: "กรอกส่วนลดท้ายบิล",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("ยกเลิก"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final double? pay = double.tryParse(moneyController.text);
+                    final double discount = _discountController.text.isNotEmpty
+                        ? double.tryParse(_discountController.text) ?? 0.0
+                        : 0.0;
+                    final double totalAmount = _grandTotal;
+
+                    // 🛑 ตรวจสอบไม่ให้ส่วนลดมากกว่ายอดรวม
+                    if (discount > totalAmount) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              "ส่วนลดไม่สามารถมากกว่ายอดรวมทั้งหมด (${totalAmount.toStringAsFixed(2)} บาท) ได้"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // ✅ ป้องกัน netTotal ติดลบ
+                    final double netTotal =
+                        (totalAmount - discount).clamp(0.0, double.infinity);
+
+                    if (pay == null || pay.isNaN) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
+                      );
+                    } else if (pay < netTotal) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("ยอดเงินไม่เพียงพอ")),
+                      );
+                    } else {
+                      final double change = pay - netTotal;
+                      Navigator.pop(context);
+
+                      List<BillItem> billItems = _saleItems.map((saleItem) {
+                        double price = _useWholesale
+                            ? saleItem.product.wholesalePrice
+                            : saleItem.product.retailPrice;
+                        return BillItem(
+                          productName: saleItem.product.name,
+                          price: price,
+                          quantity: saleItem.saleQuantity,
+                          discount: 0.0,
+                        );
+                      }).toList();
+
+                      final newBill = BillModel(
+                        billId: "BILL-${DateTime.now().millisecondsSinceEpoch}",
+                        billDate: DateTime.now(),
+                        items: billItems,
+                        totalDiscount: discount,
+                        netTotal: netTotal,
+                        moneyReceived: pay,
+                        change: change,
+                      );
+
+                      await _billBox.add(newBill);
+                      await _deductStock();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "บันทึกบิลแล้ว\nยอดรวม: ${totalAmount.toStringAsFixed(2)}\nส่วนลด: ${discount.toStringAsFixed(2)}\nยอดสุทธิ: ${netTotal.toStringAsFixed(2)}\nเงินทอน: ${change.toStringAsFixed(2)}",
+                          ),
+                        ),
+                      );
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BillDetailPage(bill: newBill),
+                        ),
+                      );
+
+                      setState(() {
+                        _saleItems.clear();
+                        _discountController.clear();
+                      });
+                    }
+                  },
+                  child: const Text("ชำระเงิน"),
+                ),
               ],
             );
           },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("ยกเลิก"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final double? pay = double.tryParse(moneyController.text);
-              // อ่านส่วนลดจาก _discountController ถ้ามี
-              final double discountInput = _discountController.text.isNotEmpty
-                  ? double.tryParse(_discountController.text) ?? 0.0
-                  : 0.0;
-
-              if (pay == null || pay.isNaN) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
-                );
-              } else if (pay < _grandTotal) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("ยอดเงินไม่เพียงพอ")),
-                );
-              } else {
-                final change = pay - _grandTotal;
-                Navigator.pop(context); // ปิด Dialog
-
-                // สร้างรายการ BillItem จาก _saleItems
-                List<BillItem> billItems = _saleItems.map((saleItem) {
-                  double price = _useWholesale
-                      ? saleItem.product.wholesalePrice
-                      : saleItem.product.retailPrice;
-                  // ใช้ discountInput สำหรับแต่ละรายการ (คุณอาจปรับวิธีคำนวณได้ตามที่ต้องการ)
-                  return BillItem(
-                    productName: saleItem.product.name,
-                    price: price,
-                    quantity: saleItem.saleQuantity,
-                    discount: discountInput,
-                  );
-                }).toList();
-
-                // สร้าง BillModel ใหม่ (กำหนด totalDiscount เป็น discountInput * จำนวนรายการ)
-                final totalDiscount = discountInput * _saleItems.length;
-                final newBill = BillModel(
-                  billId: "BILL-${DateTime.now().millisecondsSinceEpoch}",
-                  billDate: DateTime.now(),
-                  items: billItems,
-                  totalDiscount: totalDiscount,
-                  netTotal: _grandTotal,
-                  moneyReceived: pay,
-                  change: change,
-                );
-
-                // บันทึก BillModel ลง Hive
-                await _billBox.add(newBill);
-
-                // ตัดสต็อกสินค้าออกจาก LotModel ตามยอดขาย (FIFO)
-                await _deductStock();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "บันทึกบิลแล้ว\nยอดชำระเงิน: ${_grandTotal.toStringAsFixed(2)}\nเงินทอน: ${change.toStringAsFixed(2)}",
-                    ),
-                  ),
-                );
-
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BillDetailPage(bill: newBill),
-                  ),
-                );
-
-                // เคลียร์รายการขาย
-                setState(() {
-                  _saleItems.clear();
-                  _discountController.clear();
-                  _showDiscountField = false;
-                });
-              }
-            },
-            child: const Text("ชำระเงิน"),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
