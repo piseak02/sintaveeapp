@@ -18,12 +18,23 @@ class _EditPriceProductState extends State<EditPriceProduct> {
   List<ProductModel> allProducts = [];
   int _selectedIndex = 0;
 
+  // Controller สำหรับช่องค้นหา
+  final TextEditingController _searchController = TextEditingController();
+  // ตัวแปรเก็บคำค้นหา
+  String _searchQuery = "";
+
   @override
   void initState() {
     super.initState();
     productBox = Hive.box<ProductModel>('products');
     lotBox = Hive.box<LotModel>('lots');
     _loadProducts();
+    // ฟังการเปลี่ยนแปลงใน search controller
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
   }
 
   void _loadProducts() {
@@ -140,8 +151,8 @@ class _EditPriceProductState extends State<EditPriceProduct> {
                       ),
                       children: [
                         TextSpan(
-                            text:
-                                "${product.retailPrice} "), // เดิม Retail_price
+                          text: "${product.retailPrice} ",
+                        ),
                         const TextSpan(text: "ราคาปลีก"),
                       ],
                     ),
@@ -173,8 +184,8 @@ class _EditPriceProductState extends State<EditPriceProduct> {
                       ),
                       children: [
                         TextSpan(
-                            text:
-                                "${product.wholesalePrice} "), // เดิม Wholesale_price
+                          text: "${product.wholesalePrice} ",
+                        ),
                         const TextSpan(text: "ราคาส่ง"),
                       ],
                     ),
@@ -188,8 +199,7 @@ class _EditPriceProductState extends State<EditPriceProduct> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit,
-                      color: Color.fromARGB(255, 0, 0, 0)),
+                  icon: const Icon(Icons.edit, color: Colors.black),
                   onPressed: () {
                     _editPrice(product);
                   },
@@ -203,7 +213,19 @@ class _EditPriceProductState extends State<EditPriceProduct> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // กรองรายการสินค้าตามคำค้นหา (กรองด้วยชื่อสินค้า)
+    final List<ProductModel> filteredProducts = _searchQuery.isEmpty
+        ? allProducts
+        : allProducts.where((product) =>
+            product.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
     return Scaffold(
       body: Column(
         children: [
@@ -220,14 +242,26 @@ class _EditPriceProductState extends State<EditPriceProduct> {
               ),
             ),
           ),
+          // ช่องค้นหา
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: "ค้นหาสินค้า...",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
           // รายการสินค้าใน ListView
           Expanded(
-            child: allProducts.isEmpty
+            child: filteredProducts.isEmpty
                 ? const Center(child: Text("ไม่มีสินค้า"))
                 : ListView.builder(
-                    itemCount: allProducts.length,
+                    itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
-                      final product = allProducts[index];
+                      final product = filteredProducts[index];
                       return _buildProductCard(product);
                     },
                   ),

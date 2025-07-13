@@ -27,13 +27,13 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
 import 'package:sintaveeapp/Database/supplier_model.dart';
+import 'package:sintaveeapp/Login/Service_Google_Sheets.dart';
 import 'Database/product_model.dart';
 import 'Database/category_model.dart';
 import 'Database/bill_model.dart';
 import 'Database/lot_model.dart';
 import 'Database/supplier_name_model.dart';
-import 'Database/printer_connection_model.dart';
-import 'HomepageApp/my_homepage.dart';
+//import 'HomepageApp/my_homepage.dart';
 
 Future<String> getDownloadsPath() async {
   Directory? downloadsDir;
@@ -71,7 +71,6 @@ void main() async {
   Hive.registerAdapter(LotModelAdapter());
   Hive.registerAdapter(SupplierModelAdapter());
   Hive.registerAdapter(SupplierNameModelAdapter());
-  Hive.registerAdapter(PrinterConnectionModelAdapter());
 
   await Hive.openBox<LotModel>('lots');
   await Hive.openBox<ProductModel>('products');
@@ -79,7 +78,6 @@ void main() async {
   await Hive.openBox<BillModel>('bills');
   await Hive.openBox<SupplierModel>('suppliers');
   await Hive.openBox<SupplierNameModel>('supplierNames');
-  await Hive.openBox<PrinterConnectionModel>('printerBox');
 
   runApp(MyApp());
 }
@@ -92,7 +90,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.orange,
       ),
       title: "หน้าแรก",
-      home: MyHomepage(),
+      home: MyApp01(),
       // home: MyHomepage(),
     );
   }

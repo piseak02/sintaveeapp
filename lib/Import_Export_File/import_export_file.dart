@@ -139,69 +139,57 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   /// ฟังก์ชัน export ข้อมูลตามที่เลือก
-  Future<void> _exportData() async {
-    Map<String, dynamic> exportMap = {};
+ Future<void> _exportData() async {
+  Map<String, dynamic> exportMap = {};
 
-    // ตรวจสอบเลือก export ข้อมูลสินค้า
-    if (exportProducts) {
-      final productBox = Hive.box<ProductModel>('products');
-      exportMap["products"] =
-          productBox.values.map((p) => _productToMap(p)).toList();
-    }
-    // ตรวจสอบเลือก export ข้อมูลบิล
-    if (exportBills) {
-      final billBox = Hive.box<BillModel>('bills');
-      exportMap["bills"] = billBox.values.map((b) => _billToMap(b)).toList();
-    }
-    // ตรวจสอบเลือก export ข้อมูลซัพพายเออร์
-    if (exportSuppliers) {
-      final supplierBox = Hive.box<SupplierModel>('suppliers');
-      exportMap["suppliers"] =
-          supplierBox.values.map((s) => _supplierToMap(s)).toList();
-    }
-    // ตรวจสอบเลือก export ข้อมูลล็อต
-    if (exportLots) {
-      final lotBox = Hive.box<LotModel>('lots');
-      exportMap["lots"] = lotBox.values.map((l) => _lotToMap(l)).toList();
-    }
-
-    String jsonString = jsonEncode(exportMap);
-
-    // หาที่อยู่ของโฟลเดอร์ Downloads
-    Directory? downloadsDir;
-    if (Platform.isAndroid) {
-      // สำหรับ Android: getExternalStorageDirectory() จะชี้ไปที่โฟลเดอร์หลัก
-      Directory? externalDir = await getExternalStorageDirectory();
-      if (externalDir != null) {
-        // สมมุติว่าโฟลเดอร์ Download อยู่ในระดับเดียวกัน
-        downloadsDir = Directory("${externalDir.parent.path}/Download");
-      }
-    } else if (Platform.isIOS) {
-      // สำหรับ iOS ใช้ getApplicationDocumentsDirectory()
-      downloadsDir = await getApplicationDocumentsDirectory();
-    } else if (Platform.isWindows) {
-      // สำหรับ Windows ให้ใช้ getDownloadsDirectory()
-      downloadsDir = await getDownloadsDirectory();
-    }
-
-    if (downloadsDir == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("ไม่สามารถเข้าถึงโฟลเดอร์ Downloads")),
-      );
-      return;
-    }
-
-    // สร้างชื่อไฟล์ โดยใช้ datetime
-    String fileName = "export_${DateTime.now().millisecondsSinceEpoch}.json";
-    String fullPath = "${downloadsDir.path}/$fileName";
-
-    File file = File(fullPath);
-    await file.writeAsString(jsonString);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Export สำเร็จที่ $fullPath")),
-    );
+  // ตรวจสอบเลือก export ข้อมูลสินค้า
+  if (exportProducts) {
+    final productBox = Hive.box<ProductModel>('products');
+    exportMap["products"] =
+        productBox.values.map((p) => _productToMap(p)).toList();
   }
+  // ตรวจสอบเลือก export ข้อมูลบิล
+  if (exportBills) {
+    final billBox = Hive.box<BillModel>('bills');
+    exportMap["bills"] = billBox.values.map((b) => _billToMap(b)).toList();
+  }
+  // ตรวจสอบเลือก export ข้อมูลซัพพายเออร์
+  if (exportSuppliers) {
+    final supplierBox = Hive.box<SupplierModel>('suppliers');
+    exportMap["suppliers"] =
+        supplierBox.values.map((s) => _supplierToMap(s)).toList();
+  }
+  // ตรวจสอบเลือก export ข้อมูลล็อต
+  if (exportLots) {
+    final lotBox = Hive.box<LotModel>('lots');
+    exportMap["lots"] = lotBox.values.map((l) => _lotToMap(l)).toList();
+  }
+
+  String jsonString = jsonEncode(exportMap);
+
+  // ให้ผู้ใช้เลือกโฟลเดอร์ปลายทางสำหรับเก็บไฟล์
+  String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+
+  if (selectedDirectory == null) {
+    // ถ้าผู้ใช้ยกเลิกการเลือกโฟลเดอร์
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("ยกเลิกการเลือกโฟลเดอร์")),
+    );
+    return;
+  }
+
+  // สร้างชื่อไฟล์ โดยใช้ datetime
+  String fileName = "export_${DateTime.now().millisecondsSinceEpoch}.json";
+  String fullPath = "$selectedDirectory/$fileName";
+
+  File file = File(fullPath);
+  await file.writeAsString(jsonString);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text("Export สำเร็จที่ $fullPath")),
+  );
+}
+
 
   // ********************************************
   // Import Section

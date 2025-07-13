@@ -28,8 +28,24 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
     _loadLots();
   }
 
-  // โหลดข้อมูล Lot ทั้งหมดและเรียงลำดับตามวันหมดอายุที่เหลือ
-  void _loadLots() {
+  // โหลดข้อมูล Lot ทั้งหมด พร้อมทั้งลบรายการที่เชื่อมโยงกับสินค้าที่ไม่อยู่แล้ว
+  Future<void> _loadLots() async {
+    // ดึงรายการล็อตทั้งหมดออกมา
+    List<LotModel> currentLots = lotBox!.values.toList();
+
+    // ตรวจสอบว่ามีสินค้าที่เชื่อมกับล็อตนั้นอยู่หรือไม่ ถ้าไม่มีก็ให้ลบออกจาก box
+    for (var lot in currentLots) {
+      bool productExists =
+          productBox!.values.any((p) => p.id == lot.productId);
+      if (!productExists) {
+        int index = currentLots.indexWhere((l) => l.lotId == lot.lotId);
+        if (index != -1) {
+          await lotBox!.deleteAt(index);
+        }
+      }
+    }
+
+    // โหลดข้อมูลล็อตที่เหลือหลังลบรายการที่เป็น orphan
     setState(() {
       lots = lotBox!.values.toList();
       lots.sort((a, b) => a.expiryDate
@@ -149,8 +165,7 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                             color: Colors.red,
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child:
-                                const Icon(Icons.delete, color: Colors.white),
+                            child: const Icon(Icons.delete, color: Colors.white),
                           ),
                           confirmDismiss: (direction) async {
                             return await showDialog<bool>(
@@ -196,45 +211,50 @@ class _ExpiryRankingPageState extends State<ExpiryRankingPage> {
                             }
                           },
                           child: Card(
-  color: daysLeft <= 30 ? Colors.red[100] : null, // สีพื้นการ์ดถ้าใกล้หมดอายุ
-  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  child: ListTile(
-    leading: Stack(
-      alignment: Alignment.topRight,
-      children: [
-        CircleAvatar(
-          backgroundColor: daysLeft <= 30 ? Colors.red : null,
-          foregroundColor: daysLeft <= 30 ? Colors.white : null,
-          child: Text((index + 1).toString()),
-        ),
-        if (daysLeft <= 30)
-          const Icon(Icons.warning_amber_rounded,
-              color: Colors.red, size: 18), // ไอคอนเตือนเล็ก ๆ มุมบนขวา
-      ],
-    ),
-    title: Text(
-      "สินค้า: ${_getProductName(lot.productId)}",
-      style: const TextStyle(fontWeight: FontWeight.bold),
-    ),
-    subtitle: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("จำนวน: ${lot.quantity}"),
-        Text("วันหมดอายุ: $expiryText"),
-        Text("วันที่บันทึก: $recordText"),
-        Text(
-          "เหลืออีก: $daysLeft วัน",
-          style: TextStyle(
-            color: daysLeft <= 30 ? Colors.red : Colors.black,
-            fontWeight: daysLeft <= 30 ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        if (lot.note != null && lot.note!.isNotEmpty)
-          Text("หมายเหตุ: ${lot.note}"),
-      ],
-    ),
-  ),
-),
+                            color: daysLeft <= 30 ? Colors.red[100] : null,
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: ListTile(
+                              leading: Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor:
+                                        daysLeft <= 30 ? Colors.red : null,
+                                    foregroundColor:
+                                        daysLeft <= 30 ? Colors.white : null,
+                                    child: Text((index + 1).toString()),
+                                  ),
+                                  if (daysLeft <= 30)
+                                    const Icon(Icons.warning_amber_rounded,
+                                        color: Colors.red, size: 18),
+                                ],
+                              ),
+                              title: Text(
+                                "สินค้า: ${_getProductName(lot.productId)}",
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("จำนวน: ${lot.quantity}"),
+                                  Text("วันหมดอายุ: $expiryText"),
+                                  Text("วันที่บันทึก: $recordText"),
+                                  Text(
+                                    "เหลืออีก: $daysLeft วัน",
+                                    style: TextStyle(
+                                      color: daysLeft <= 30 ? Colors.red : Colors.black,
+                                      fontWeight: daysLeft <= 30
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                  if (lot.note != null && lot.note!.isNotEmpty)
+                                    Text("หมายเหตุ: ${lot.note}"),
+                                ],
+                              ),
+                            ),
+                          ),
                         );
                       },
                     ),

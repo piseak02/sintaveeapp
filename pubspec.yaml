@@ -48,6 +48,9 @@ dependencies:
   file_picker: ^9.2.2
   esc_pos_utils_plus: ^2.0.4
   charset_converter: ^2.3.0
+  http: ^1.4.0
+  shared_preferences: ^2.5.3
+  device_info_plus: ^11.5.0
 
 flutter_icons:
  android: true

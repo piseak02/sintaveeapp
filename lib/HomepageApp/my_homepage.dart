@@ -12,7 +12,6 @@ import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Database/lot_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
-import 'package:sintaveeapp/Printer/printer_connection.dart';
 
 
 class MyHomepage extends StatefulWidget {
@@ -175,18 +174,7 @@ class _MyHomepagaState extends State<MyHomepage> {
     ],
   ),
   actions: [
-    // ปุ่มเครื่องปริ้น เพิ่มเข้ามาข้างๆ ปุ่มกระดิ่ง
-    IconButton(
-      icon: const Icon(Icons.print, color: Colors.black),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PrinterConnectionPage(),
-          ),
-        );
-      },
-    ),
+    //ปุ่มกระดิ่ง
     IconButton(
       icon: const Icon(Icons.notifications),
       color: Colors.black,

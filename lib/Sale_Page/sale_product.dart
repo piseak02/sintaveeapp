@@ -23,6 +23,8 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
 
   @override
   String get searchFieldLabel => "ค้นหาสินค้า";
+
+  @override
   List<Widget>? buildActions(BuildContext context) {
     return [
       IconButton(
@@ -47,7 +49,7 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
   @override
   Widget buildResults(BuildContext context) {
     if (query.isEmpty) {
-      return Center(child: Text("ยังไม่ได้ค้นหา"));
+      return const Center(child: Text("ยังไม่ได้ค้นหา"));
     }
     final results = productBox.values
         .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
@@ -71,7 +73,7 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
   @override
   Widget buildSuggestions(BuildContext context) {
     if (query.isEmpty) {
-      return Center(child: Text("ยังไม่ได้ค้นหา"));
+      return const Center(child: Text("ยังไม่ได้ค้นหา"));
     }
     final suggestions = productBox.values
         .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
@@ -119,6 +121,7 @@ class _SalePageState extends State<SalePage> {
     _billBox = Hive.box<BillModel>('bills');
     _lotBox = Hive.box<LotModel>('lots');
 
+    // สำหรับ barcode ที่ส่งมาเริ่มต้น (จากการสแกน) ให้ใช้ฟังก์ชันเดิม
     if (widget.initialBarcode != null) {
       _addProductToSale(widget.initialBarcode!);
     }
@@ -156,7 +159,6 @@ class _SalePageState extends State<SalePage> {
     if (result != null && result != '-1') {
       // เล่นเสียงปี๊บ
       AudioPlayer player = AudioPlayer();
-      // สมมุติว่าไฟล์เสียงปี๊บอยู่ใน assets/beep.mp3
       await player.play(AssetSource('beep-313342.mp3'));
       // ดีเลย์ครึ่งวินาที
       await Future.delayed(const Duration(milliseconds: 500));
@@ -164,19 +166,19 @@ class _SalePageState extends State<SalePage> {
     }
   }
 
-  /// ฟังก์ชันค้นหาสินค้า
+  /// ฟังก์ชันค้นหาสินค้า (จากการค้นหาให้เลือกสินค้า)
   Future<void> _searchProduct() async {
     final selectedProduct = await showSearch<ProductModel?>(
       context: context,
       delegate: ProductSearchDelegate(_productBox),
     );
-
     if (selectedProduct != null) {
-      _addProductToSale(selectedProduct.barcode ?? '');
+      // แก้ไข: เพิ่มสินค้าโดยตรงโดยไม่ใช้ barcode
+      _addProductToSaleByProduct(selectedProduct);
     }
   }
 
-  /// เพิ่มสินค้าในรายการขายโดยใช้ barcode
+  /// เพิ่มสินค้าในรายการขายโดยใช้ barcode (สำหรับการสแกน)
   void _addProductToSale(String barcode) {
     final matchingProducts =
         _productBox.values.where((p) => p.barcode == barcode);
@@ -196,6 +198,18 @@ class _SalePageState extends State<SalePage> {
         const SnackBar(content: Text("ไม่พบสินค้าด้วยบาร์โค้ดนี้")),
       );
     }
+  }
+
+  /// เพิ่มสินค้าในรายการขายโดยตรงจาก ProductModel (สำหรับการค้นหา)
+  void _addProductToSaleByProduct(ProductModel product) {
+    int index = _saleItems.indexWhere((item) => item.product.id == product.id);
+    setState(() {
+      if (index != -1) {
+        _saleItems[index].saleQuantity++;
+      } else {
+        _saleItems.add(SaleItem(product: product, saleQuantity: 1));
+      }
+    });
   }
 
   /// สร้าง Card สำหรับแต่ละรายการขาย
@@ -443,7 +457,8 @@ class _SalePageState extends State<SalePage> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => BillDetailPage(bill: newBill),
+                          builder: (context) =>
+                              BillDetailPage(bill: newBill),
                         ),
                       );
 
@@ -497,8 +512,7 @@ class _SalePageState extends State<SalePage> {
                           color: const Color.fromARGB(255, 255, 255, 255),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const Icon(Icons.delete,
-                              color: Color.fromARGB(255, 0, 0, 0)),
+                          child: const Icon(Icons.delete, color: Color.fromARGB(255, 0, 0, 0)),
                         ),
                         confirmDismiss: (direction) async {
                           return await showDialog<bool>(
@@ -506,18 +520,15 @@ class _SalePageState extends State<SalePage> {
                                 builder: (BuildContext context) {
                                   return AlertDialog(
                                     title: const Text("ยืนยันการลบ"),
-                                    content: Text(
-                                        "ต้องการลบสินค้า \"${item.product.name}\" หรือไม่?"),
+                                    content: Text("ต้องการลบสินค้า \"${item.product.name}\" หรือไม่?"),
                                     actions: [
                                       TextButton(
                                         child: const Text("ยกเลิก"),
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
+                                        onPressed: () => Navigator.of(context).pop(false),
                                       ),
                                       TextButton(
                                         child: const Text("ลบ"),
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(true),
+                                        onPressed: () => Navigator.of(context).pop(true),
                                       ),
                                     ],
                                   );
@@ -530,9 +541,7 @@ class _SalePageState extends State<SalePage> {
                             _saleItems.removeAt(index);
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    "ลบ \"${item.product.name}\" เรียบร้อย")),
+                            SnackBar(content: Text("ลบ \"${item.product.name}\" เรียบร้อย")),
                           );
                         },
                         child: _buildSaleItemCard(item, index),
@@ -571,8 +580,7 @@ class _SalePageState extends State<SalePage> {
                 ),
                 Text(
                   "${_grandTotal.toStringAsFixed(2)} บาท",
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
