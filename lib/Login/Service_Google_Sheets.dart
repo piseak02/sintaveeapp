@@ -1,4 +1,4 @@
-import 'package:http/http.dart';
+import 'package:http/http.dart' show get, post;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
