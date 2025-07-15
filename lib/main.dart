@@ -1,97 +1,78 @@
-// import 'package:flutter/material.dart';
-// // import 'HomepageApp/my_homepage.dart';
-// import 'package:sintaveeapp/Product/add_product.dart';
-
-// void main() {
-//   runApp(Myapp());
-// }
-
-// ///สร้างวิตเจ็ต
-// class Myapp extends StatelessWidget {
-//   const Myapp({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       theme: ThemeData(
-//         primaryColor: Colors.orange,
-//       ),
-//       title: "หน้าแรก",
-//       home: MyAddProduct(),
-//     );
-//   }
-// }
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart'; // ใช้หา path ที่ Flutter เขียนไฟล์ได้
-import 'package:sintaveeapp/Database/supplier_model.dart';
-import 'package:sintaveeapp/Login/Service_Google_Sheets.dart';
-import 'Database/product_model.dart';
-import 'Database/category_model.dart';
-import 'Database/bill_model.dart';
-import 'Database/lot_model.dart';
-import 'Database/supplier_name_model.dart';
-//import 'HomepageApp/my_homepage.dart';
+import 'package:path_provider/path_provider.dart';
 
-Future<String> getDownloadsPath() async {
-  Directory? downloadsDir;
+import 'database/user_model.dart';
+import 'HomepageApp/auth_wrapper.dart';
+import 'database/product_model.dart';
+import 'database/category_model.dart';
+import 'database/bill_model.dart';
+import 'database/lot_model.dart';
+import 'database/supplier_model.dart';
+import 'database/supplier_name_model.dart';
 
-  if (Platform.isAndroid) {
-    Directory? externalDir = await getExternalStorageDirectory();
-    if (externalDir != null) {
-      downloadsDir = Directory(
-          '${externalDir.path}/data'); // บันทึกใน Android/data/<package_name>/files/data
-    }
-  } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    downloadsDir =
-        Directory('${Platform.environment['USERPROFILE']}\\Downloads');
-  }
-
-  if (downloadsDir != null && await downloadsDir.exists()) {
-    return downloadsDir.path;
-  } else {
-    // fallback ไปใช้โฟลเดอร์ที่ Flutter รองรับ
-    return (await getApplicationDocumentsDirectory()).path;
-  }
-}
-
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ใช้ Downloads Path
-  String hivePath = await getDownloadsPath();
-  await Hive.initFlutter(hivePath); // ให้ Hive ใช้ Path ใน Downloads
+  // ส่วนของการตั้งค่า Hive Path ยังคงเหมือนเดิม
+  final Directory supportDir = await getApplicationSupportDirectory();
+  final String hivePath = '${supportDir.path}/hive_data';
+  await Directory(hivePath).create(recursive: true);
+  await Hive.initFlutter(hivePath);
 
-  Hive.registerAdapter(ProductModelAdapter());
-  Hive.registerAdapter(CategoryModelAdapter());
-  Hive.registerAdapter(BillItemAdapter());
-  Hive.registerAdapter(BillModelAdapter());
-  Hive.registerAdapter(LotModelAdapter());
-  Hive.registerAdapter(SupplierModelAdapter());
-  Hive.registerAdapter(SupplierNameModelAdapter());
+  // ส่วนของการลงทะเบียน Adapter ทั้งหมด ยังคงเหมือนเดิม
+  if (!Hive.isAdapterRegistered(ProductModelAdapter().typeId)) {
+    Hive.registerAdapter(ProductModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(CategoryModelAdapter().typeId)) {
+    Hive.registerAdapter(CategoryModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(BillItemAdapter().typeId)) {
+    Hive.registerAdapter(BillItemAdapter());
+  }
+  if (!Hive.isAdapterRegistered(BillModelAdapter().typeId)) {
+    Hive.registerAdapter(BillModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(LotModelAdapter().typeId)) {
+    Hive.registerAdapter(LotModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(SupplierModelAdapter().typeId)) {
+    Hive.registerAdapter(SupplierModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(SupplierNameModelAdapter().typeId)) {
+    Hive.registerAdapter(SupplierNameModelAdapter());
+  }
+  if (!Hive.isAdapterRegistered(UserModelAdapter().typeId)) {
+    Hive.registerAdapter(UserModelAdapter());
+  }
 
-  await Hive.openBox<LotModel>('lots');
-  await Hive.openBox<ProductModel>('products');
-  await Hive.openBox<CategoryModel>('categories');
-  await Hive.openBox<BillModel>('bills');
-  await Hive.openBox<SupplierModel>('suppliers');
-  await Hive.openBox<SupplierNameModel>('supplierNames');
+  // --- จุดที่แก้ไข ---
+  // เปิดเฉพาะ Box ที่จำเป็นสำหรับหน้าตรวจสอบการล็อกอินเท่านั้น
+  // เพื่อให้แอปเริ่มต้นได้เร็วขึ้นและไม่ค้าง
+  if (!Hive.isBoxOpen('users')) {
+    await Hive.openBox<UserModel>('users');
+  }
 
-  runApp(MyApp());
+  // Box อื่นๆ จะถูกย้ายไปเปิดในหน้าที่ต้องการใช้งานแทน
+  // เช่น 'lots', 'products' จะไปเปิดในหน้า MyHomepage
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Sintavee App',
       theme: ThemeData(
         primarySwatch: Colors.orange,
+        brightness: Brightness.light,
+        useMaterial3: true,
       ),
-      title: "หน้าแรก",
-      home: MyApp01(),
-      // home: MyHomepage(),
+      home: const AuthWrapper(),
     );
   }
 }

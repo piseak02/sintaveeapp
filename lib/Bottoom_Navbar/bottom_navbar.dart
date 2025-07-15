@@ -26,7 +26,10 @@ class BottomNavbar extends StatelessWidget {
     if (index == 0) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MyHomepage()),
+        MaterialPageRoute(
+            builder: (context) => MyHomepage(
+                  onLogout: () {},
+                )),
       );
     } else if (index == 1) {
       Navigator.push(
