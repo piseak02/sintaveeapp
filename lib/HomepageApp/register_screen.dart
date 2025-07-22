@@ -1,3 +1,5 @@
+// lib/HomepageApp/register_screen.dart
+
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
@@ -20,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
 
+      // --- เรียกใช้ AuthService ที่แก้ไขแล้ว ---
       final error = await _authService.register(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
@@ -30,13 +33,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _isLoading = false);
 
       if (error == null) {
+        // --- ถ้าสำเร็จ แสดงข้อความและกลับไปหน้า Login ---
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ'),
-              backgroundColor: Colors.green),
+            content: Text(
+                'สร้างบัญชีสำเร็จ! กรุณารอ Admin กำหนด Token เพื่อเข้าใช้งาน'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
         );
         Navigator.pop(context); // กลับไปหน้า Login
       } else {
+        // --- ถ้าไม่สำเร็จ แสดงข้อความ Error จาก Server ---
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(error), backgroundColor: Colors.red),
         );
@@ -46,6 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ... โค้ดส่วน UI ของคุณยังคงเหมือนเดิม ไม่ต้องแก้ไข ...
     return Scaffold(
       appBar: AppBar(title: const Text('สร้างบัญชีผู้ใช้')),
       body: Center(
@@ -67,10 +76,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(labelText: 'รหัสผ่าน'),
                   obscureText: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'กรุณากรอกรหัสผ่าน';
-                    if (value.length < 6)
+                    }
+                    if (value.length < 6) {
                       return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                    }
                     return null;
                   },
                 ),
@@ -81,8 +92,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const InputDecoration(labelText: 'ยืนยันรหัสผ่าน'),
                   obscureText: true,
                   validator: (value) {
-                    if (value != _passwordController.text)
+                    if (value != _passwordController.text) {
                       return 'รหัสผ่านไม่ตรงกัน';
+                    }
                     return null;
                   },
                 ),

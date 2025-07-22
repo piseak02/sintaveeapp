@@ -1,4 +1,8 @@
+// lib/HomepageApp/auth_wrapper.dart
+
+import 'dart:async'; // Import 'dart:async' เพื่อใช้งาน Timer
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ Import SharedPreferences
 import 'package:sintaveeapp/HomepageApp/my_homepage.dart';
 import 'package:sintaveeapp/services/auth_service.dart';
 import 'package:sintaveeapp/HomepageApp/login_screen.dart';
@@ -12,51 +16,144 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final AuthService _authService = AuthService();
-  bool _isLoading = true;
-  bool _isLoggedIn = false;
+  late Future<Map<String, dynamic>> _sessionFuture;
+  bool _isExpiredDialogShowing = false;
+
+  Timer? _expiryCheckTimer;
 
   @override
   void initState() {
     super.initState();
-    _checkSession();
+    // ตรวจสอบครั้งแรกเมื่อเปิดแอป
+    _sessionFuture = _authService.checkSession();
+    // หลังจากตรวจสอบครั้งแรกแล้ว, ให้เริ่ม Timer ถ้าล็อกอินสำเร็จ
+    _sessionFuture.then((sessionData) {
+      if (sessionData['loggedIn'] == true && mounted) {
+        _startLocalExpiryCheckTimer();
+      }
+    });
   }
 
-  Future<void> _checkSession() async {
-    final loggedIn = await _authService.isLoggedIn();
+  @override
+  void dispose() {
+    _expiryCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  /// ✅ --- ส่วนที่อัปเกรดใหม่ทั้งหมด ---
+  /// ฟังก์ชันสำหรับเริ่ม Timer ที่จะ "ตรวจสอบเวลาในเครื่อง"
+  void _startLocalExpiryCheckTimer() {
+    _expiryCheckTimer?.cancel();
+
+    // ตั้งเวลาตรวจสอบทุก 10 วินาที (เพื่อให้ทดสอบได้ง่าย)
+    _expiryCheckTimer =
+        Timer.periodic(const Duration(seconds: 10), (timer) async {
+      if (!mounted || _isExpiredDialogShowing) {
+        timer.cancel();
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final expiryString = prefs.getString('token_expires_at');
+
+      if (expiryString == null) {
+        // ถ้าไม่มีเวลาหมดอายุบันทึกไว้ ให้ทำการ Logout
+        timer.cancel();
+        _onLogout();
+        return;
+      }
+
+      final expiryDate = DateTime.tryParse(expiryString);
+      if (expiryDate == null) {
+        // ถ้ารูปแบบเวลาผิดพลาด ให้ทำการ Logout
+        timer.cancel();
+        _onLogout();
+        return;
+      }
+
+      // ✅ --- หัวใจหลัก ---
+      // เปรียบเทียบเวลาหมดอายุกับเวลาปัจจุบันของเครื่อง
+      if (DateTime.now().isAfter(expiryDate)) {
+        // 1. หยุด Timer ทันที
+        timer.cancel();
+        // 2. แสดง Pop-up แจ้งเตือนโดยตรง
+        _showExpiredTokenDialog(context);
+      }
+    });
+  }
+
+  Future<void> _onLogout() async {
+    _expiryCheckTimer?.cancel();
+    await _authService.logout();
+    _refreshSessionUI();
+  }
+
+  // ฟังก์ชันสำหรับ Refresh UI หลังจาก Login/Logout
+  void _refreshSessionUI() {
     if (mounted) {
       setState(() {
-        _isLoggedIn = loggedIn;
-        _isLoading = false;
+        _isExpiredDialogShowing = false;
+        // ทำการตรวจสอบและตั้งค่า Timer ใหม่อีกครั้ง
+        _sessionFuture = _authService.checkSession();
+        _sessionFuture.then((sessionData) {
+          if (sessionData['loggedIn'] == true && mounted) {
+            _startLocalExpiryCheckTimer();
+          }
+        });
       });
     }
   }
 
-  // --- จุดที่แก้ไข ---
-  // 1. สร้างฟังก์ชันสำหรับจัดการการ Logout โดยเฉพาะ
-  Future<void> _onLogout() async {
-    // สั่งให้ AuthService ทำการลบ Token ออกจากเครื่อง
-    await _authService.logout();
-    // ตรวจสอบสถานะใหม่อีกครั้ง (ซึ่งตอนนี้จะกลายเป็น false แล้ว)
-    _checkSession();
-  }
+  void _showExpiredTokenDialog(BuildContext context) {
+    if (_isExpiredDialogShowing) return;
 
-  // 2. สร้างฟังก์ชันสำหรับจัดการเมื่อ Login สำเร็จ
-  void _onLoginSuccess() {
-    _checkSession();
+    if (mounted) {
+      setState(() {
+        _isExpiredDialogShowing = true;
+      });
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text("แจ้งเตือน"),
+          content: const Text("โทเค็นของคุณหมดอายุ กรุณาติดต่อผู้พัฒนา"),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('ตกลง'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      // เมื่อผู้ใช้กด "ตกลง" ให้ทำการ Logout
+      _onLogout();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _sessionFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
 
-    if (_isLoggedIn) {
-      // 3. ส่งฟังก์ชัน _onLogout ไปให้ MyHomepage
-      return MyHomepage(onLogout: _onLogout);
-    } else {
-      // 4. ส่งฟังก์ชัน _onLoginSuccess ไปให้ LoginScreen
-      return LoginScreen(onLoginSuccess: _onLoginSuccess);
-    }
+        final bool isLoggedIn = snapshot.data?['loggedIn'] ?? false;
+
+        if (isLoggedIn) {
+          return MyHomepage(onLogout: _onLogout);
+        } else {
+          return LoginScreen(onLoginSuccess: _refreshSessionUI);
+        }
+      },
+    );
   }
 }

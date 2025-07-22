@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sintaveeapp/AccountPageApp/account_page.dart';
 import 'package:sintaveeapp/Supplier/list_supplier.dart';
-import '../HomepageApp/my_homepage.dart';
+// MyHomepage import is no longer needed here for navigation
 import '../Bill_Page/BillSale_Page.dart';
 import '../Sale_Page/sale_product.dart';
 import '../Database/product_model.dart';
@@ -23,15 +23,19 @@ class BottomNavbar extends StatelessWidget {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   void _handleNavigation(int index, BuildContext context) async {
+    // ✅ --- แก้ไข Logic การเปลี่ยนหน้าทั้งหมด ---
+
+    // ถ้าผู้ใช้อยู่หน้าอื่น แล้วกดปุ่ม "หน้าแรก" (index 0)
+    // ให้ใช้วิธี "ย้อนกลับ" ไปยังหน้าแรกสุด แทนการสร้างหน้าใหม่
     if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => MyHomepage(
-                  onLogout: () {},
-                )),
-      );
-    } else if (index == 1) {
+      // คำสั่งนี้จะปิดหน้าปัจจุบันทั้งหมด แล้วย้อนกลับไปที่หน้าแรกสุด (MyHomepage)
+      // ทำให้เราไม่ต้องสร้าง MyHomepage ขึ้นมาใหม่ และแก้ปัญหา Error ได้
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return; // จบการทำงานสำหรับปุ่มหน้าแรก
+    }
+
+    // การเปลี่ยนหน้าสำหรับปุ่มอื่นๆ ยังคงเหมือนเดิม
+    if (index == 1) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => Myaccount()),
@@ -43,7 +47,7 @@ class BottomNavbar extends StatelessWidget {
             builder: (context) => const SimpleBarcodeScannerPage()),
       );
 
-      if (result != null && result != '-1') {
+      if (result != null && result != '-1' && context.mounted) {
         final productBox = Hive.box<ProductModel>('products');
         final matching = productBox.values.firstWhere(
           (p) => p.barcode == result,
@@ -103,7 +107,7 @@ class BottomNavbar extends StatelessWidget {
       elevation: 0, // ลดเงาของ BottomNavigationBar
       currentIndex: currentIndex,
       onTap: (index) => _handleNavigation(index, context),
-      items: [
+      items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: "หน้าแรก"),
         BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: "บัญชี"),
         BottomNavigationBarItem(

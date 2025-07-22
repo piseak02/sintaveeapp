@@ -1,3 +1,5 @@
+// lib/HomepageApp/my_homepage.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
@@ -19,7 +21,12 @@ import 'package:sintaveeapp/Supplier/add_supplier.dart';
 
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
-  const MyHomepage({super.key, required this.onLogout});
+
+  // ✅ เอา onRefresh ออกไปแล้ว
+  const MyHomepage({
+    super.key,
+    required this.onLogout,
+  });
 
   @override
   State<MyHomepage> createState() => _MyHomepagaState();
@@ -119,18 +126,17 @@ class _MyHomepagaState extends State<MyHomepage> {
           ],
         ),
         actions: [
+          // ✅ เอาปุ่ม Refresh ออกไปแล้ว
           IconButton(
             icon: const Icon(Icons.notifications),
             color: Colors.black,
             onPressed: () {},
           ),
-          // --- จุดที่แก้ไข: เพิ่มกล่องข้อความยืนยัน ---
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'ออกจากระบบ',
             color: Colors.black,
             onPressed: () {
-              // แสดงกล่องข้อความยืนยันก่อนออกจากระบบ
               showDialog(
                 context: context,
                 builder: (BuildContext dialogContext) {
@@ -141,14 +147,14 @@ class _MyHomepagaState extends State<MyHomepage> {
                       TextButton(
                         child: const Text('ยกเลิก'),
                         onPressed: () {
-                          Navigator.of(dialogContext).pop(); // ปิดกล่องข้อความ
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                       TextButton(
                         child: const Text('ยืนยัน'),
                         onPressed: () {
-                          Navigator.of(dialogContext).pop(); // ปิดกล่องข้อความ
-                          widget.onLogout(); // เรียกใช้ฟังก์ชัน logout
+                          Navigator.of(dialogContext).pop();
+                          widget.onLogout();
                         },
                       ),
                     ],
