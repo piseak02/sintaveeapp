@@ -1,6 +1,7 @@
 // lib/HomepageApp/my_homepage.dart
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:sintaveeapp/Database/bill_model.dart';
@@ -18,6 +19,7 @@ import 'package:sintaveeapp/Product/list_exp_date_product.dart';
 import 'package:sintaveeapp/Product/list_product.dart';
 import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
+import 'package:sintaveeapp/services/auth_service.dart';
 
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -32,6 +34,8 @@ class MyHomepage extends StatefulWidget {
 }
 
 class _MyHomepagaState extends State<MyHomepage> {
+  bool _isDialogShowing = false;
+  final AuthService _authService = AuthService();
   late Future<void> _initHiveBoxesFuture;
   int _selectedIndex = 0;
 
@@ -39,6 +43,63 @@ class _MyHomepagaState extends State<MyHomepage> {
   void initState() {
     super.initState();
     _initHiveBoxesFuture = _openRequiredBoxes();
+  }
+
+  /// ✅ --- ฟังก์ชันใหม่สำหรับตรวจสอบ "กฎ 30 วัน" ในเครื่อง ---
+  Future<void> _checkThirtyDayRuleAndLogout() async {
+    if (!mounted || _isDialogShowing) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final lastLoginTimestamp = prefs.getString('last_login_timestamp');
+
+    if (lastLoginTimestamp == null) {
+      _handleLogout("ข้อมูลการเข้าสู่ระบบไม่สมบูรณ์ กรุณาล็อกอินใหม่");
+      return;
+    }
+
+    final lastLoginDate = DateTime.parse(lastLoginTimestamp);
+    final difference = DateTime.now().toUtc().difference(lastLoginDate);
+
+    // คุณสามารถแก้เลข 30 เป็นเลขอื่นเพื่อทดสอบได้ (เช่น difference.inMinutes >= 1)
+    if (difference.inDays >= 30) {
+      _showReLoginDialog("ซีซั่นของคุณหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+    }
+  }
+
+  /// ฟังก์ชันสำหรับแสดง Pop-up
+  void _showReLoginDialog(String message) {
+    if (_isDialogShowing) return;
+    setState(() => _isDialogShowing = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text("แจ้งเตือน"),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('ตกลง'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      _handleLogout(null); // Logout โดยไม่ต้องแสดงข้อความซ้ำ
+    });
+  }
+
+  /// ฟังก์ชันสำหรับจัดการการ Logout
+  Future<void> _handleLogout(String? message) async {
+    await _authService.logout();
+    if (mounted && message != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.blue),
+      );
+    }
+    widget.onLogout();
   }
 
   Future<void> _openRequiredBoxes() async {
@@ -80,17 +141,13 @@ class _MyHomepagaState extends State<MyHomepage> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
+              body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasError) {
           return Scaffold(
-            body: Center(
-              child: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล: ${snapshot.error}'),
-            ),
-          );
+              body: Center(
+                  child: Text(
+                      'เกิดข้อผิดพลาดในการโหลดข้อมูล: ${snapshot.error}')));
         }
         return _buildHomePageContent();
       },
@@ -144,16 +201,13 @@ class _MyHomepagaState extends State<MyHomepage> {
                     actions: <Widget>[
                       TextButton(
                         child: const Text('ยกเลิก'),
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
-                        },
+                        onPressed: () => Navigator.of(dialogContext).pop(),
                       ),
                       TextButton(
                         child: const Text('ยืนยัน'),
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
-                          // เรียกใช้ฟังก์ชัน onLogout ที่ได้รับมาจาก AuthWrapper
-                          widget.onLogout();
+                          _handleLogout(null);
                         },
                       ),
                     ],
@@ -220,6 +274,8 @@ class _MyHomepagaState extends State<MyHomepage> {
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
         onTap: onItemTapped,
+        // ✅ ส่งฟังก์ชันตรวจสอบไปให้ Navbar
+        onHomeButtonPressed: _checkThirtyDayRuleAndLogout,
       ),
     );
   }

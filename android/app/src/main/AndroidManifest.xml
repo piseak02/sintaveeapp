@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ✅ วางโค้ด 1 บรรทัดนี้ลงไปตรงนี้ ✅ -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="สินทวี Manager"
         android:name="${applicationName}"
