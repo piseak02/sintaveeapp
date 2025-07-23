@@ -22,7 +22,6 @@ import 'package:sintaveeapp/Supplier/add_supplier.dart';
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
 
-  // ✅ เอา onRefresh ออกไปแล้ว
   const MyHomepage({
     super.key,
     required this.onLogout,
@@ -126,7 +125,6 @@ class _MyHomepagaState extends State<MyHomepage> {
           ],
         ),
         actions: [
-          // ✅ เอาปุ่ม Refresh ออกไปแล้ว
           IconButton(
             icon: const Icon(Icons.notifications),
             color: Colors.black,
@@ -154,6 +152,7 @@ class _MyHomepagaState extends State<MyHomepage> {
                         child: const Text('ยืนยัน'),
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
+                          // เรียกใช้ฟังก์ชัน onLogout ที่ได้รับมาจาก AuthWrapper
                           widget.onLogout();
                         },
                       ),
