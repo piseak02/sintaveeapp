@@ -34,6 +34,7 @@ class MyHomepage extends StatefulWidget {
 }
 
 class _MyHomepagaState extends State<MyHomepage> {
+  String _username = ''; // ✅ 1. ตัวแปรสำหรับเก็บชื่อผู้ใช้
   bool _isDialogShowing = false;
   final AuthService _authService = AuthService();
   late Future<void> _initHiveBoxesFuture;
@@ -43,9 +44,20 @@ class _MyHomepagaState extends State<MyHomepage> {
   void initState() {
     super.initState();
     _initHiveBoxesFuture = _openRequiredBoxes();
+    _loadUsername(); // ✅ 3. เรียกใช้ฟังก์ชันโหลดชื่อ
   }
 
-  /// ✅ --- ฟังก์ชันใหม่สำหรับตรวจสอบ "กฎ 30 วัน" ในเครื่อง ---
+  /// ✅ 2. ฟังก์ชันสำหรับโหลดชื่อผู้ใช้จาก SharedPreferences
+  Future<void> _loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _username = prefs.getString('username') ?? 'ผู้ใช้';
+      });
+    }
+  }
+
+  /// --- ฟังก์ชันสำหรับตรวจสอบ "กฎ 30 วัน" ในเครื่อง ---
   Future<void> _checkThirtyDayRuleAndLogout() async {
     if (!mounted || _isDialogShowing) return;
 
@@ -60,7 +72,6 @@ class _MyHomepagaState extends State<MyHomepage> {
     final lastLoginDate = DateTime.parse(lastLoginTimestamp);
     final difference = DateTime.now().toUtc().difference(lastLoginDate);
 
-    // คุณสามารถแก้เลข 30 เป็นเลขอื่นเพื่อทดสอบได้ (เช่น difference.inMinutes >= 1)
     if (difference.inDays >= 30) {
       _showReLoginDialog("ซีซั่นของคุณหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
     }
@@ -156,24 +167,28 @@ class _MyHomepagaState extends State<MyHomepage> {
 
   Widget _buildHomePageContent() {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         titleSpacing: 10,
         toolbarHeight: 70,
         centerTitle: false,
         title: Row(
-          children: const [
-            Icon(Icons.person, size: 40, color: Colors.black),
-            SizedBox(width: 20),
+          children: [
+            const Icon(Icons.person, size: 40, color: Colors.black),
+            const SizedBox(width: 20),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("ยินดีต้อนรับ",
+                const Text("ยินดีต้อนรับ",
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.black)),
-                Text("ภิเษก",
-                    style: TextStyle(
+                // ✅ 4. นำชื่อผู้ใช้ที่โหลดมาแสดงผล
+                Text(_username,
+                    style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black)),
@@ -221,60 +236,63 @@ class _MyHomepagaState extends State<MyHomepage> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
+        // ✅ 5. แก้ไขให้พื้นหลังกลับมาแสดงผล
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage("assets/po1.png"),
+            image: AssetImage("assets/wallpaper.jpg"),
             fit: BoxFit.cover,
             alignment: Alignment.center,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Wrap(
-            alignment: WrapAlignment.start,
-            spacing: 20,
-            runSpacing: 15,
-            children: [
-              _buildShortcut(
-                  icon: Icons.add, title: "เพิ่มรายการ", context: context),
-              _buildShortcut(
-                  icon: Icons.edit, title: "แก้ไขรายการ", context: context),
-              _buildShortcut(
-                  icon: Icons.assignment,
-                  title: "แสดงรายการ",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.priority_high,
-                  title: "สินค้าใกล้หมดอายุ",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.price_change,
-                  title: "แก้ไขราคา",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.production_quantity_limits_sharp,
-                  title: "จัดการสต็อก",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.barcode_reader,
-                  title: "คำนวนราคา",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.business,
-                  title: "เพิ่มบิล(ซัพพายเออร์)",
-                  context: context),
-              _buildShortcut(
-                  icon: Icons.file_upload,
-                  title: "รับข้อมูล/ส่งออกข้อมูล",
-                  context: context),
-            ],
+        // ✅ 6. แก้ไขให้ปุ่มอยู่ตรงกลาง
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 20,
+              runSpacing: 15,
+              children: [
+                _buildShortcut(
+                    icon: Icons.add, title: "เพิ่มรายการ", context: context),
+                _buildShortcut(
+                    icon: Icons.edit, title: "แก้ไขรายการ", context: context),
+                _buildShortcut(
+                    icon: Icons.assignment,
+                    title: "แสดงรายการ",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.priority_high,
+                    title: "สินค้าใกล้หมดอายุ",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.price_change,
+                    title: "แก้ไขราคา",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.production_quantity_limits_sharp,
+                    title: "จัดการสต็อก",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.barcode_reader,
+                    title: "คำนวนราคา",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.business,
+                    title: "เพิ่มบิล(ซัพพายเออร์)",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.file_upload,
+                    title: "รับข้อมูล/ส่งออกข้อมูล",
+                    context: context),
+              ],
+            ),
           ),
         ),
       ),
       bottomNavigationBar: BottomNavbar(
         currentIndex: _selectedIndex,
         onTap: onItemTapped,
-        // ✅ ส่งฟังก์ชันตรวจสอบไปให้ Navbar
         onHomeButtonPressed: _checkThirtyDayRuleAndLogout,
       ),
     );
@@ -291,15 +309,15 @@ class _MyHomepagaState extends State<MyHomepage> {
     }
 
     Map<String, Widget> routes = {
-      "แก้ไขรายการ": EditProduct(),
-      "เพิ่มรายการ": MyAddProduct(),
-      "แสดงรายการ": List_Product(),
-      "แก้ไขราคา": EditPriceProduct(),
-      "สินค้าใกล้หมดอายุ": ExpiryRankingPage(),
-      "จัดการสต็อก": EditStockProduct(),
-      "คำนวนราคา": SalePage(),
-      "เพิ่มบิล(ซัพพายเออร์)": add_Supplier(),
-      "รับข้อมูล/ส่งออกข้อมูล": ImportExportPage(),
+      "แก้ไขรายการ": const EditProduct(),
+      "เพิ่มรายการ": const MyAddProduct(),
+      "แสดงรายการ": const List_Product(),
+      "แก้ไขราคา": const EditPriceProduct(),
+      "สินค้าใกล้หมดอายุ": const ExpiryRankingPage(),
+      "จัดการสต็อก": const EditStockProduct(),
+      "คำนวนราคา": const SalePage(),
+      "เพิ่มบิล(ซัพพายเออร์)": const add_Supplier(),
+      "รับข้อมูล/ส่งออกข้อมูล": const ImportExportPage(),
     };
 
     return GestureDetector(

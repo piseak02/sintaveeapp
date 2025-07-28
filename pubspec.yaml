@@ -83,7 +83,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/ipad.jpg
-    - assets/po1.png
+    - assets/wallpaper.jpg
     - assets/fonts/THSarabun.ttf
     - assets/logo1.png
     - assets/beep-313342.mp3

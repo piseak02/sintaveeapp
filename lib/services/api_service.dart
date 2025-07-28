@@ -7,7 +7,7 @@ class ApiService {
   final Dio _dio = Dio();
   // **สำคัญ: ตรวจสอบให้แน่ใจว่า URL นี้เป็นของคุณ**
   static const String _appsScriptUrl =
-      "https://script.google.com/macros/s/AKfycbyUJ3GD-2Kb_9X0IQGZzTiKtJWNhHzLj_hLgNUOn2ULk8SoiOi8rfp2aHnHZkMcLZMFBQ/exec";
+      "https://script.google.com/macros/s/AKfycbwT6o0_B0ZXQXauuby46cRzTj_rOId1iGrqZOVIUwWGbJmXpdBzYFwcgsOyUpTak_VECw/exec";
 
   // ... ฟังก์ชัน login และ register ของคุณ ...
   Future<Map<String, dynamic>> login(
