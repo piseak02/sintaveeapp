@@ -18,18 +18,12 @@ class _SupplierListPageState extends State<SupplierListPage> {
   late Box<SupplierModel> supplierBox;
   late Box<SupplierNameModel> supplierNameBox;
 
-  String searchQuery = "";
-  String? _selectedNameFilter; // Filter จาก SupplierNameModel
-  DateTime? _selectedStartDate; // เริ่มต้นของช่วงวันที่
-  DateTime? _selectedEndDate; // สิ้นสุดของช่วงวันที่
+  String searchQuery = '';
+  String? _selectedNameFilter;
+  DateTime? _selectedStartDate;
+  DateTime? _selectedEndDate;
 
   int _selectedIndex = 4;
-
-  void onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   void initState() {
@@ -38,9 +32,14 @@ class _SupplierListPageState extends State<SupplierListPage> {
     supplierNameBox = Hive.box<SupplierNameModel>('supplierNames');
   }
 
-  /// เลือกช่วงวันที่สำหรับกรอง (recordDate)
+  void onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   Future<void> _pickDateRange() async {
-    final DateTimeRange? pickedRange = await showDateRangePicker(
+    final pickedRange = await showDateRangePicker(
       context: context,
       initialDateRange: _selectedStartDate != null && _selectedEndDate != null
           ? DateTimeRange(start: _selectedStartDate!, end: _selectedEndDate!)
@@ -56,7 +55,6 @@ class _SupplierListPageState extends State<SupplierListPage> {
     }
   }
 
-  /// เคลียร์ตัวกรองวันที่
   void _clearDateFilter() {
     setState(() {
       _selectedStartDate = null;
@@ -65,8 +63,7 @@ class _SupplierListPageState extends State<SupplierListPage> {
   }
 
   List<DropdownMenuItem<String>> supplierNameBoxValues() {
-    final box = Hive.box<SupplierNameModel>('supplierNames');
-    return box.values.map((supplierName) {
+    return supplierNameBox.values.map((supplierName) {
       return DropdownMenuItem<String>(
         value: supplierName.name,
         child: Text(supplierName.name),
@@ -79,12 +76,12 @@ class _SupplierListPageState extends State<SupplierListPage> {
     return Scaffold(
       body: Column(
         children: [
-          // ส่วนหัวที่ใช้ TPrimaryHeaderContainer
+          // Header
           TPrimaryHeaderContainer(
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                "รายการซัพพายเออร์",
+                'รายการซัพพายเออร์',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -93,7 +90,7 @@ class _SupplierListPageState extends State<SupplierListPage> {
               ),
             ),
           ),
-          // ช่องค้นหา (เพิ่มเติม)
+          // Search Field
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -103,7 +100,7 @@ class _SupplierListPageState extends State<SupplierListPage> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "ค้นหา...",
+                hintText: 'ค้นหา...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -111,7 +108,7 @@ class _SupplierListPageState extends State<SupplierListPage> {
               ),
             ),
           ),
-          // Row สำหรับตัวกรอง: Dropdown ชื่อ (จาก SupplierNameModel) และตัวเลือกวันที่ (ช่วง)
+          // Filters: Name and Date
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -119,7 +116,7 @@ class _SupplierListPageState extends State<SupplierListPage> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     decoration: InputDecoration(
-                      labelText: "ชื่อซัพพายเออร์",
+                      labelText: 'ชื่อซัพพายเออร์',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -129,35 +126,35 @@ class _SupplierListPageState extends State<SupplierListPage> {
                     value: _selectedNameFilter,
                     items: [
                       const DropdownMenuItem<String>(
-                        value: "",
-                        child: Text("ทั้งหมด"),
+                        value: '',
+                        child: Text('ทั้งหมด'),
                       ),
-                      ...supplierNameBoxValues()
+                      ...supplierNameBoxValues(),
                     ],
                     onChanged: (value) {
                       setState(() {
-                        _selectedNameFilter = (value == "" ? null : value);
+                        _selectedNameFilter = value == '' ? null : value;
                       });
                     },
                   ),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 16),
-                  ),
                   onPressed: _pickDateRange,
                   icon: const Icon(Icons.date_range, color: Colors.white),
                   label: Text(
-                    _selectedStartDate == null || _selectedEndDate == null
-                        ? "เลือกวันที่"
-                        : "${_selectedStartDate!.day}/${_selectedStartDate!.month}/${_selectedStartDate!.year} - ${_selectedEndDate!.day}/${_selectedEndDate!.month}/${_selectedEndDate!.year}",
+                    _selectedStartDate != null && _selectedEndDate != null
+                        ? '${_selectedStartDate!.day}/${_selectedStartDate!.month}/${_selectedStartDate!.year} - '
+                            '${_selectedEndDate!.day}/${_selectedEndDate!.month}/${_selectedEndDate!.year}'
+                        : 'เลือกวันที่',
                     style: const TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 16),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -168,145 +165,159 @@ class _SupplierListPageState extends State<SupplierListPage> {
               ],
             ),
           ),
-          // แสดงรายการ Supplier
+          // List and Totals
           Expanded(
             child: ValueListenableBuilder(
               valueListenable: supplierBox.listenable(),
               builder: (context, Box<SupplierModel> box, _) {
-                // คำนวณรายชื่อ Supplier ภายใน builder เพื่อให้ได้ข้อมูลล่าสุด
-                List<SupplierModel> suppliers =
-                    box.values.toList().cast<SupplierModel>();
+                final allSuppliers = box.values.toList().cast<SupplierModel>();
+                final filtered = allSuppliers.where((s) {
+                  final matchesSearch =
+                      s.name.toLowerCase().contains(searchQuery.toLowerCase());
+                  final matchesName = _selectedNameFilter == null ||
+                      _selectedNameFilter!.isEmpty ||
+                      s.name == _selectedNameFilter;
+                  final matchesDate =
+                      _selectedStartDate == null || _selectedEndDate == null
+                          ? true
+                          : () {
+                              final date = DateTime(s.recordDate.year,
+                                  s.recordDate.month, s.recordDate.day);
+                              final start = DateTime(
+                                  _selectedStartDate!.year,
+                                  _selectedStartDate!.month,
+                                  _selectedStartDate!.day);
+                              final end = DateTime(
+                                  _selectedEndDate!.year,
+                                  _selectedEndDate!.month,
+                                  _selectedEndDate!.day);
+                              return (date.isAtSameMomentAs(start) ||
+                                      date.isAfter(start)) &&
+                                  (date.isAtSameMomentAs(end) ||
+                                      date.isBefore(end));
+                            }();
+                  return matchesSearch && matchesName && matchesDate;
+                }).toList();
 
-                // กรองข้อมูลตาม searchQuery
-                if (searchQuery.isNotEmpty) {
-                  suppliers = suppliers
-                      .where((supplier) => supplier.name
-                          .toLowerCase()
-                          .contains(searchQuery.toLowerCase()))
-                      .toList();
-                }
-                // กรองข้อมูลตามชื่อที่เลือก (จาก SupplierNameModel)
-                if (_selectedNameFilter != null &&
-                    _selectedNameFilter!.isNotEmpty) {
-                  suppliers = suppliers
-                      .where((supplier) => supplier.name == _selectedNameFilter)
-                      .toList();
-                }
-                // กรองข้อมูลตามช่วงวันที่ (recordDate)
-                if (_selectedStartDate != null && _selectedEndDate != null) {
-                  suppliers = suppliers.where((supplier) {
-                    final supplierDate = DateTime(
-                      supplier.recordDate.year,
-                      supplier.recordDate.month,
-                      supplier.recordDate.day,
-                    );
-                    final startDate = DateTime(
-                      _selectedStartDate!.year,
-                      _selectedStartDate!.month,
-                      _selectedStartDate!.day,
-                    );
-                    final endDate = DateTime(
-                      _selectedEndDate!.year,
-                      _selectedEndDate!.month,
-                      _selectedEndDate!.day,
-                    );
-                    return supplierDate.compareTo(startDate) >= 0 &&
-                        supplierDate.compareTo(endDate) <= 0;
-                  }).toList();
+                if (filtered.isEmpty) {
+                  return const Center(child: Text('ไม่มีข้อมูล Supplier'));
                 }
 
-                if (suppliers.isEmpty) {
-                  return const Center(
-                    child: Text("ไม่มีข้อมูล Supplier"),
-                  );
-                }
-                return ListView.builder(
-                  itemCount: suppliers.length,
-                  itemBuilder: (context, index) {
-                    final supplier = suppliers[index];
-                    return Dismissible(
-                      key: ValueKey(supplier),
-                      direction: DismissDirection.endToStart,
-                      confirmDismiss: (direction) async {
-                        return await showDialog<bool>(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text("ยืนยันการลบ"),
-                              content: Text(
-                                  "คุณต้องการลบ ${supplier.name} หรือไม่?"),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: const Text("ยกเลิก"),
+                final totalAll = allSuppliers.fold<double>(
+                    0, (sum, s) => sum + s.paymentAmount);
+                final totalFiltered =
+                    filtered.fold<double>(0, (sum, s) => sum + s.paymentAmount);
+
+                return Column(
+                  children: [
+                    // Items
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final s = filtered[index];
+                          return Dismissible(
+                            key: ValueKey(s),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child:
+                                  const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            confirmDismiss: (_) async => await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('ยืนยันการลบ'),
+                                content:
+                                    Text('คุณต้องการลบ ${s.name} หรือไม่?'),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(false),
+                                      child: const Text('ยกเลิก')),
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(true),
+                                      child: const Text('ลบ',
+                                          style: TextStyle(color: Colors.red))),
+                                ],
+                              ),
+                            ),
+                            onDismissed: (_) {
+                              final actualIndex =
+                                  box.values.toList().indexOf(s);
+                              if (actualIndex >= 0) {
+                                supplierBox.deleteAt(actualIndex);
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('ลบ ${s.name} สำเร็จ')));
+                            },
+                            child: Card(
+                              margin: const EdgeInsets.all(8.0),
+                              child: ListTile(
+                                leading: s.billImagePath != null
+                                    ? Image.file(File(s.billImagePath!),
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover)
+                                    : const Icon(Icons.image),
+                                title: Text(s.name),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        'จ่ายเงิน: ${s.paymentAmount.toStringAsFixed(2)} บาท'),
+                                    Text(
+                                        'วันที่: ${s.recordDate.day}/${s.recordDate.month}/${s.recordDate.year}'),
+                                  ],
                                 ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  child: const Text("ลบ",
-                                      style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      onDismissed: (direction) {
-                        final int actualIndex =
-                            box.values.toList().indexOf(supplier);
-                        if (actualIndex != -1) {
-                          supplierBox.deleteAt(actualIndex);
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("ลบ ${supplier.name} สำเร็จ")),
-                        );
-                      },
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                                onTap: () {
+                                  if (s.billImagePath != null) {
+                                    final paths = s.billImagePath!.split(',');
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => FullScreenImagePage(
+                                              imagePaths: paths)),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      child: Card(
-                        margin: const EdgeInsets.all(8.0),
-                        child: ListTile(
-                          leading: supplier.billImagePath != null
-                              ? Image.file(
-                                  File(supplier.billImagePath!),
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(Icons.image),
-                          title: Text(supplier.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                    ),
+                    // Totals
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (_selectedStartDate != null &&
+                                _selectedEndDate != null)
                               Text(
-                                  "จ่ายเงิน: ${supplier.paymentAmount.toStringAsFixed(2)} บาท"),
-                              Text(
-                                  "วันที่: ${supplier.recordDate.day}/${supplier.recordDate.month}/${supplier.recordDate.year}"),
-                            ],
-                          ),
-                          onTap: () {
-                            if (supplier.billImagePath != null) {
-                              List<String> imagePaths =
-                                  supplier.billImagePath!.split(',');
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FullScreenImagePage(
-                                    imagePaths: imagePaths,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
+                                'ยอดรวมระหว่าง ${_selectedStartDate!.day}/${_selectedStartDate!.month}/${_selectedStartDate!.year} - '
+                                '${_selectedEndDate!.day}/${_selectedEndDate!.month}/${_selectedEndDate!.year}: ${totalFiltered.toStringAsFixed(2)} บาท',
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            Text(
+                              'ยอดรวมทั้งหมด: ${totalAll.toStringAsFixed(2)} บาท',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 );
               },
             ),
@@ -321,7 +332,6 @@ class _SupplierListPageState extends State<SupplierListPage> {
   }
 }
 
-/// Widget สำหรับแสดงภาพบิลแบบเต็มหน้าจอ (รองรับหลายรูปด้วย PageView)
 class FullScreenImagePage extends StatelessWidget {
   final List<String> imagePaths;
   const FullScreenImagePage({Key? key, required this.imagePaths})
@@ -330,16 +340,11 @@ class FullScreenImagePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("ภาพบิล"),
-      ),
+      appBar: AppBar(title: const Text('ภาพบิล')),
       body: PageView(
         children: imagePaths.map((path) {
           return InteractiveViewer(
-            child: Image.file(
-              File(path),
-              fit: BoxFit.contain,
-            ),
+            child: Image.file(File(path), fit: BoxFit.contain),
           );
         }).toList(),
       ),
