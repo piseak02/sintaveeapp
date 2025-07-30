@@ -2,45 +2,44 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
-import 'HomepageApp/auth_wrapper.dart';
-import 'database/product_model.dart';
-import 'database/category_model.dart';
-import 'database/bill_model.dart';
-import 'database/lot_model.dart';
-import 'database/supplier_model.dart';
-import 'database/supplier_name_model.dart';
+import 'package:sintaveeapp/HomepageApp/auth_wrapper.dart';
+import 'package:sintaveeapp/Database/product_model.dart';
+import 'package:sintaveeapp/Database/category_model.dart';
+import 'package:sintaveeapp/Database/bill_model.dart';
+import 'package:sintaveeapp/Database/lot_model.dart';
+import 'package:sintaveeapp/Database/supplier_model.dart';
+import 'package:sintaveeapp/Database/supplier_name_model.dart';
+import 'package:intl/date_symbol_data_local.dart'; // ✔️
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ส่วนของการตั้งค่า Hive Path ยังคงเหมือนเดิม
+  // โหลดข้อมูลวันที่–เดือน สำหรับ locale ไทย
+  await initializeDateFormatting('th', null);
+
+  // กำหนดที่เก็บข้อมูล Hive
   final Directory supportDir = await getApplicationSupportDirectory();
   final String hivePath = '${supportDir.path}/hive_data';
   await Directory(hivePath).create(recursive: true);
   await Hive.initFlutter(hivePath);
 
-  // ส่วนของการลงทะเบียน Adapter ทั้งหมด ยังคงเหมือนเดิม
-  if (!Hive.isAdapterRegistered(ProductModelAdapter().typeId)) {
-    Hive.registerAdapter(ProductModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(CategoryModelAdapter().typeId)) {
-    Hive.registerAdapter(CategoryModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(BillItemAdapter().typeId)) {
-    Hive.registerAdapter(BillItemAdapter());
-  }
-  if (!Hive.isAdapterRegistered(BillModelAdapter().typeId)) {
-    Hive.registerAdapter(BillModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(LotModelAdapter().typeId)) {
-    Hive.registerAdapter(LotModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(SupplierModelAdapter().typeId)) {
-    Hive.registerAdapter(SupplierModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(SupplierNameModelAdapter().typeId)) {
-    Hive.registerAdapter(SupplierNameModelAdapter());
-  }
+  // ลงทะเบียน Adapter ของโมเดลทั้งหมด
+  Hive.registerAdapter(ProductModelAdapter());
+  Hive.registerAdapter(CategoryModelAdapter());
+  Hive.registerAdapter(BillItemAdapter());
+  Hive.registerAdapter(BillModelAdapter());
+  Hive.registerAdapter(LotModelAdapter());
+  Hive.registerAdapter(SupplierModelAdapter());
+  Hive.registerAdapter(SupplierNameModelAdapter());
+
+  // เปิด Box ก่อนใช้งาน
+  await Hive.openBox<CategoryModel>('categories');
+  await Hive.openBox<ProductModel>('products');
+  await Hive.openBox<LotModel>('lots');
+  await Hive.openBox<SupplierModel>('suppliers');
+  await Hive.openBox<SupplierNameModel>('supplier_names');
+  await Hive.openBox<BillModel>('bills');
+  await Hive.openBox<BillItem>('bill_items');
 
   runApp(const MyApp());
 }

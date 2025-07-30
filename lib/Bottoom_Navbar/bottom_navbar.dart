@@ -1,7 +1,7 @@
 // lib/Bottoom_Navbar/bottom_navbar.dart
 
 import 'package:flutter/material.dart';
-import 'package:sintaveeapp/AccountPageApp/account_page.dart';
+import 'package:sintaveeapp/FinancialReport/financial_report_page.dart';
 import 'package:sintaveeapp/Supplier/list_supplier.dart';
 import '../Bill_Page/BillSale_Page.dart';
 import '../Sale_Page/sale_product.dart';
@@ -39,7 +39,7 @@ class BottomNavbar extends StatelessWidget {
     // --- Logic สำหรับปุ่มอื่นๆ ยังคงเหมือนเดิม ---
     if (index == 1) {
       Navigator.push(
-          context, MaterialPageRoute(builder: (context) => Myaccount()));
+          context, MaterialPageRoute(builder: (context) => FinancialReportPage()));
     } else if (index == 2) {
       final result = await Navigator.push(
         context,
