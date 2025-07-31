@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 
 class BarcodeLabelWidget extends StatelessWidget {
-  // รับข้อมูลเป็น String ตรงๆ
   final String name;
   final String price;
   final String barcode;
@@ -16,29 +15,16 @@ class BarcodeLabelWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ตรวจสอบว่ามีข้อมูลบาร์โค้ดส่งมาหรือไม่
-    if (barcode.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.red),
-        ),
-        child: const Center(
-          child: Text("ไม่มีบาร์โค้ด",
-              style: TextStyle(color: Colors.red, fontSize: 10)),
-        ),
-      );
-    }
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 4, vertical: 4), // [แก้ไข] ลด Padding แนวตั้งเล็กน้อย
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: Colors.grey.shade400, width: 0.5),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment:
+            MainAxisAlignment.center, // [แก้ไข] จัดให้อยู่กลางแนวตั้ง
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
@@ -54,19 +40,22 @@ class BarcodeLabelWidget extends StatelessWidget {
             'ราคา: $price บาท',
             style: const TextStyle(fontSize: 9, color: Colors.black),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2), // [แก้ไข] ลดระยะห่าง
+          // [แก้ไข] ลดความสูงของบาร์โค้ดลง
           BarcodeWidget(
             barcode: Barcode.code128(),
             data: barcode,
-            height: 40,
+            height: 30, // <--- ลดจาก 40 เหลือ 30
             drawText: false,
             color: Colors.black,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1), // [แก้ไข] ลดระยะห่าง
           Text(
             barcode,
             style: const TextStyle(
-                fontSize: 10, letterSpacing: 1.5, color: Colors.black),
+                fontSize: 9,
+                letterSpacing: 1.0,
+                color: Colors.black), // [แก้ไข] ลดขนาด Font และระยะห่าง
           ),
         ],
       ),
