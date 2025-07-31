@@ -94,53 +94,63 @@ class _FinancialReportPageState extends State<FinancialReportPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: TPrimaryHeaderContainer(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Text(
-                      'รายงานสรุปยอดขาย',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+        top: false, // <--- เพิ่มบรรทัดนี้เข้าไป
+        child: Column(
+          // 1. เปลี่ยน Widget หลักเป็น Column
+          children: [
+            // 2. ส่วนหัว (Header) จะถูกตรึงไว้ ไม่เลื่อนตาม
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: TPrimaryHeaderContainer(
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                    'รายงานสรุปยอดขาย',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSection('สรุปยอดเดือนนี้',
-                        _monthYearFormat.format(DateTime.now()), [
-                      _buildSimpleCard('ยอดขาย', _salesThisMonth, Colors.black),
-                      const SizedBox(width: 16),
-                      _buildSimpleCard('กำไร/ขาดทุน', _profitThisMonth,
-                          _profitThisMonth >= 0 ? Colors.black : Colors.red),
-                    ]),
-                    const SizedBox(height: 24),
-                    _buildSection(
-                        'ภาพรวมปีนี้', 'พ.ศ. ${DateTime.now().year + 543}', [
-                      _buildSimpleCard('ยอดขาย', _salesThisYear, Colors.black),
-                      const SizedBox(width: 16),
-                      _buildSimpleCard('กำไร/ขาดทุน', _profitThisYear,
-                          _profitThisYear >= 0 ? Colors.black : Colors.red),
-                    ]),
-                    const SizedBox(height: 24),
-                    _buildChartSection(),
-                  ],
+            ),
+
+            // 3. ครอบเนื้อหาที่เหลือด้วย Expanded เพื่อให้ขยายเต็มพื้นที่
+            Expanded(
+              child: SingleChildScrollView(
+                // ทำให้เฉพาะส่วนนี้ที่เลื่อนได้
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSection('สรุปยอดเดือนนี้',
+                          _monthYearFormat.format(DateTime.now()), [
+                        _buildSimpleCard(
+                            'ยอดขาย', _salesThisMonth, Colors.black),
+                        const SizedBox(width: 16),
+                        _buildSimpleCard('กำไร/ขาดทุน', _profitThisMonth,
+                            _profitThisMonth >= 0 ? Colors.black : Colors.red),
+                      ]),
+                      const SizedBox(height: 24),
+                      _buildSection(
+                          'ภาพรวมปีนี้', 'พ.ศ. ${DateTime.now().year + 543}', [
+                        _buildSimpleCard(
+                            'ยอดขาย', _salesThisYear, Colors.black),
+                        const SizedBox(width: 16),
+                        _buildSimpleCard('กำไร/ขาดทุน', _profitThisYear,
+                            _profitThisYear >= 0 ? Colors.black : Colors.red),
+                      ]),
+                      const SizedBox(height: 24),
+                      _buildChartSection(),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavbar(

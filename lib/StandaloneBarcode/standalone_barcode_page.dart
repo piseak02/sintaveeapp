@@ -6,10 +6,13 @@ import 'package:sintaveeapp/StandaloneBarcode/barcode_label_widget.dart';
 import 'package:sintaveeapp/widgets/castom_shapes/Containers/primary_header_container.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+// [แก้ไข] เปลี่ยนมาใช้ image_gallery_saver_plus
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'standalone_label_model.dart';
 import 'standalone_print_preview.dart';
 import 'saved_label_model.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+
 
 class StandaloneBarcodePage extends StatefulWidget {
   const StandaloneBarcodePage({Key? key}) : super(key: key);
@@ -162,15 +165,45 @@ class _StandaloneBarcodePageState extends State<StandaloneBarcodePage> {
   }
 
   Future<void> _saveToGallery(String labelId) async {
-    var status = await Permission.storage.request();
+    // [แก้ไข] เปลี่ยนมาขอสิทธิ์สำหรับรูปภาพโดยเฉพาะสำหรับ Android 13+
+    // และขอสิทธิ์ storage สำหรับเวอร์ชันเก่า
+    final PermissionStatus status;
+    if (await DeviceInfoPlugin()
+            .androidInfo
+            .then((info) => info.version.sdkInt) >=
+        33) {
+      status = await Permission.photos.request();
+    } else {
+      status = await Permission.storage.request();
+    }
+
+    // [ปรับปรุง] เพิ่มการตรวจสอบกรณีผู้ใช้ปฏิเสธสิทธิ์ถาวร
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'คุณได้ปฏิเสธสิทธิ์การเข้าถึงรูปภาพอย่างถาวร กรุณาไปที่การตั้งค่าเพื่อเปิดใช้งาน'),
+            action: SnackBarAction(
+              label: 'เปิดตั้งค่า',
+              onPressed: openAppSettings,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     if (status.isGranted) {
       final controller = _screenshotControllers[labelId];
       if (controller == null) return;
       final Uint8List? imageBytes = await controller.capture(pixelRatio: 3.0);
       if (imageBytes == null) return;
-      final result = await ImageGallerySaver.saveImage(imageBytes,
+
+      final result = await ImageGallerySaverPlus.saveImage(imageBytes,
           quality: 100, name: "barcode-$labelId");
-      if (mounted && result['isSuccess']) {
+
+      if (mounted && result != null && result['isSuccess']) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('บันทึกภาพลงแกลเลอรีสำเร็จ!')));
       } else if (mounted) {
@@ -315,10 +348,8 @@ class _StandaloneBarcodePageState extends State<StandaloneBarcodePage> {
           ],
         ),
       ),
-      // [ปรับปรุง] แก้ไขการทำงานของปุ่ม FloatingActionButton
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // 1. ดึงข้อมูลทั้งหมดจาก "สมุดบันทึก"
           final List<SavedLabelModel> allSavedLabels =
               _savedLabelsBox.values.toList();
 
@@ -328,21 +359,19 @@ class _StandaloneBarcodePageState extends State<StandaloneBarcodePage> {
             return;
           }
 
-          // 2. แปลงข้อมูลจาก SavedLabelModel เป็น StandaloneLabel
           final List<StandaloneLabel> labelsToPrint =
               allSavedLabels.map((saved) {
             return StandaloneLabel(
                 name: saved.name, price: saved.price, barcode: saved.barcode);
           }).toList();
 
-          // 3. ส่งข้อมูลทั้งหมดไปที่หน้า Preview
           Navigator.push(
               context,
               MaterialPageRoute(
                   builder: (_) =>
                       StandalonePrintPreview(labels: labelsToPrint)));
         },
-        label: const Text('พิมพ์จากสมุดบันทึก'), // เปลี่ยนข้อความ
+        label: const Text('พิมพ์จากสมุดบันทึก'),
         icon: const Icon(Icons.print),
         backgroundColor: Colors.orange,
       ),
