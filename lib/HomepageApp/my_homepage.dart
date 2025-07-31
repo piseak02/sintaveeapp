@@ -73,6 +73,8 @@ class _MyHomepagaState extends State<MyHomepage> {
     final lastLoginDate = DateTime.parse(lastLoginTimestamp);
     final difference = DateTime.now().toUtc().difference(lastLoginDate);
 
+    ////////difference.inMinutes >= 1  เปลี่ยนเป็นนาทีใช้คำสั่งนี้
+    /// difference.inDays >= 30 คำสั่งนี้ เปลี่ยนเป็นวัน
     if (difference.inDays >= 30) {
       _showReLoginDialog("ซีซั่นของคุณหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
     }
