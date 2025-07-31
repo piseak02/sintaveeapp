@@ -4,6 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:shared_preferences/shared_preferences.dart'; // [แก้ไข] 1. เพิ่ม import สำหรับ SharedPreferences
+import 'dart:io'; // [แก้ไข] 2. เพิ่ม import สำหรับการจัดการไฟล์
 
 import '../Database/bill_model.dart'; // ไฟล์ Model บิล
 
@@ -43,7 +45,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
 
   /// สร้าง PDF จาก BillModel
   ///
-  /// สำหรับหน้ากระดาษ A4 เราใช้ MultiPage พร้อม header และ footer  
+  /// สำหรับหน้ากระดาษ A4 เราใช้ MultiPage พร้อม header และ footer
   /// สำหรับหน้ากระดาษอื่น (สลิป) เราจะทำเป็นหน้าเดียวที่ต่อเนื่องกัน
   Future<Uint8List> _generatePdf(PdfPageFormat format) async {
     final doc = pw.Document();
@@ -52,9 +54,24 @@ class _BillDetailPageState extends State<BillDetailPage> {
     final fontData = await rootBundle.load("assets/fonts/THSarabun.ttf");
     final fontThai = pw.Font.ttf(fontData.buffer.asByteData());
 
-    // โหลดโลโก้
-    final logoBytes = (await rootBundle.load('assets/logo1.png')).buffer.asUint8List();
-    final logoImage = pw.MemoryImage(logoBytes);
+    // [แก้ไข] 3. โหลดโลโก้และข้อความท้ายบิลแบบ Dynamic
+    // ดึงค่าที่บันทึกไว้จาก SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final logoPath = prefs.getString('bill_logo_path');
+    final footerLine1 = prefs.getString('bill_footer_line1') ?? "เวลาทำการ: เปิดทุกวัน 04.00 - 18.00";
+    final footerLine2 = prefs.getString('bill_footer_line2') ?? "ขอบคุณที่ใช้บริการ";
+
+    pw.MemoryImage? logoImage;
+    // ตรวจสอบว่ามี path ของโลโก้ที่ผู้ใช้เลือกไว้หรือไม่
+    if (logoPath != null && await File(logoPath).exists()) {
+      // ถ้ามี ให้โหลดรูปจาก path นั้น
+      final logoBytes = await File(logoPath).readAsBytes();
+      logoImage = pw.MemoryImage(logoBytes);
+    } else {
+      // ถ้าไม่มี หรือหาไฟล์ไม่เจอ ให้ใช้โลโก้ตั้งต้นจาก assets
+      final defaultLogoBytes = (await rootBundle.load('assets/logo1.png')).buffer.asUint8List();
+      logoImage = pw.MemoryImage(defaultLogoBytes);
+    }
 
     // คำนวณยอดรวมก่อนหักส่วนลด
     final double totalAmount = widget.bill.netTotal + widget.bill.totalDiscount;
@@ -68,7 +85,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
           header: (pw.Context context) {
             // แสดงโลโก้เฉพาะหน้าแรก
             if (context.pageNumber == 1) {
-              return pw.Center(child: pw.Image(logoImage, width: 150, height: 150));
+              // [แก้ไข] 4. ใช้ logoImage ที่โหลดมาแบบ Dynamic
+              return pw.Center(child: pw.Image(logoImage!, width: 150, height: 150));
             }
             return pw.Container();
           },
@@ -90,10 +108,9 @@ class _BillDetailPageState extends State<BillDetailPage> {
                 style: pw.TextStyle(font: fontThai, fontSize: 16),
               ),
               pw.Divider(),
-              // ตารางรายการสินค้า
+              // ตารางรายการสินค้า (โค้ดส่วนนี้คงเดิม)
               pw.Table(
                 children: [
-                  // หัวตาราง
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -118,7 +135,6 @@ class _BillDetailPageState extends State<BillDetailPage> {
                       ),
                     ],
                   ),
-                  // รายการสินค้าแต่ละแถว
                   ...List.generate(widget.bill.items.length, (index) {
                     final item = widget.bill.items[index];
                     return pw.TableRow(
@@ -137,11 +153,11 @@ class _BillDetailPageState extends State<BillDetailPage> {
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${item.price}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                          child: pw.Text("${item.price.toStringAsFixed(2)}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${item.itemNetTotal} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                          child: pw.Text("${item.itemNetTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
                         ),
                       ],
                     );
@@ -150,34 +166,35 @@ class _BillDetailPageState extends State<BillDetailPage> {
               ),
               pw.SizedBox(height: 20),
               pw.Divider(),
-              // สรุปยอด
+              // สรุปยอด (โค้ดส่วนนี้คงเดิม)
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text("ยอดรวมสุทธิ:", style: pw.TextStyle(font: fontThai, fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.netTotal} บาท", style: pw.TextStyle(font: fontThai, fontSize: 16)),
+                  pw.Text("${widget.bill.netTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 16)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text("เงินที่รับ:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.moneyReceived} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
+                  pw.Text("${widget.bill.moneyReceived.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text("เงินทอน:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.change} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
+                  pw.Text("${widget.bill.change.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
                 ],
               ),
               pw.SizedBox(height: 20),
               pw.Center(
                 child: pw.Column(
                   children: [
-                    pw.Text("เวลาทำการ: เปิดทุกวัน 04.00 - 18.00", style: pw.TextStyle(font: fontThai, fontSize: 14)),
-                    pw.Text("ขอบคุณที่ใช้บริการ", style: pw.TextStyle(font: fontThai, fontSize: 14)),
+                    // [แก้ไข] 5. ใช้ข้อความท้ายบิลที่โหลดมาแบบ Dynamic
+                    pw.Text(footerLine1, style: pw.TextStyle(font: fontThai, fontSize: 14)),
+                    pw.Text(footerLine2, style: pw.TextStyle(font: fontThai, fontSize: 14)),
                   ],
                 ),
               ),
@@ -187,7 +204,6 @@ class _BillDetailPageState extends State<BillDetailPage> {
       );
     } else {
       // สำหรับหน้ากระดาษที่ไม่ใช่ A4 (สลิป)
-      // เราจะใช้หน้าเดียว (pw.Page) โดยกำหนดความสูงให้มากพอ (เช่น 1000 มม.) เพื่อให้เนื้อหาทั้งหมดอยู่บนหน้าเดียว
       final slipFormat = PdfPageFormat(format.width, 1000 * PdfPageFormat.mm, marginAll: 10);
       
       doc.addPage(
@@ -197,22 +213,24 @@ class _BillDetailPageState extends State<BillDetailPage> {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Center(child: pw.Image(logoImage, width: 100, height: 100)),
+                // [แก้ไข] 4. ใช้ logoImage ที่โหลดมาแบบ Dynamic
+                pw.Center(child: pw.Image(logoImage!, width: 100, height: 100)),
                 pw.SizedBox(height: 10),
                 pw.Text("บิลเลขที่: ${widget.bill.billId}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                pw.Text("วันที่: ${widget.bill.billDate.toLocal()}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                pw.Text("วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
                 pw.SizedBox(height: 10),
                 pw.Text("รายการสินค้า:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
                 pw.Divider(),
-                ...widget.bill.items.map((item) {
+                // ...widget.bill.items.map (โค้ดส่วนนี้คงเดิม)
+                 ...widget.bill.items.map((item) {
                   return pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(item.productName, style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold, fontSize: 12)),
                       pw.SizedBox(height: 1),
-                      pw.Text("ราคา: ${item.price} x ${item.quantity}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                      pw.Text("ส่วนลด: ${item.discount}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                      pw.Text("รวม: ${item.itemNetTotal} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                      pw.Text("ราคา: ${item.price.toStringAsFixed(2)} x ${item.quantity}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                      pw.Text("ส่วนลด: ${item.discount.toStringAsFixed(2)}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                      pw.Text("รวม: ${item.itemNetTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
                       pw.Divider(),
                     ],
                   );
@@ -221,14 +239,14 @@ class _BillDetailPageState extends State<BillDetailPage> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text("รวมทั้งสิ้น:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("$totalAmount บาท", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${totalAmount.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
                   ],
                 ),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text("ส่วนลดท้ายบิล:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.totalDiscount} บาท", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${widget.bill.totalDiscount.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
                   ],
                 ),
                 pw.Divider(),
@@ -236,28 +254,30 @@ class _BillDetailPageState extends State<BillDetailPage> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text("ยอดรวมสุทธิ:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.netTotal} บาท", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${widget.bill.netTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
                   ],
                 ),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text("เงินที่รับ:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.moneyReceived} บาท", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${widget.bill.moneyReceived.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
                   ],
                 ),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text("เงินทอน:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.change} บาท", style: pw.TextStyle(font: fontThai)),
+                    pw.Text("${widget.bill.change.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
                   ],
                 ),
+                 pw.SizedBox(height: 20),
                 pw.Center(
                   child: pw.Column(
                     children: [
-                      pw.Text("เวลาทำการ: เปิดทุกวัน 04.00 - 18.00", style: pw.TextStyle(font: fontThai)),
-                      pw.Text("ขอบคุณที่ใช้บริการ", style: pw.TextStyle(font: fontThai)),
+                      // [แก้ไข] 5. ใช้ข้อความท้ายบิลที่โหลดมาแบบ Dynamic
+                      pw.Text(footerLine1, style: pw.TextStyle(font: fontThai, fontSize: 12)),
+                      pw.Text(footerLine2, style: pw.TextStyle(font: fontThai, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -342,9 +362,11 @@ class _BillDetailPageState extends State<BillDetailPage> {
                     );
                   }).toList(),
                   onChanged: (newFormat) {
-                    setState(() {
-                      _selectedFormat = newFormat!;
-                    });
+                    if (newFormat != null) {
+                      setState(() {
+                        _selectedFormat = newFormat;
+                      });
+                    }
                   },
                 ),
               ],

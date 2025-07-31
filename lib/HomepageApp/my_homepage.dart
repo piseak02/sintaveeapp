@@ -19,6 +19,8 @@ import 'package:sintaveeapp/Product/list_product.dart';
 import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
 import 'package:sintaveeapp/services/auth_service.dart';
+import 'package:sintaveeapp/Bill_Page/bill_settings_page.dart'; //  <-- 1. เพิ่ม import นี้
+import 'package:sintaveeapp/StandaloneBarcode/standalone_barcode_page.dart'; // <-- เพิ่ม import
 
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -286,6 +288,14 @@ class _MyHomepagaState extends State<MyHomepage> {
                     icon: Icons.file_upload,
                     title: "รับข้อมูล/ส่งออกข้อมูล",
                     context: context),
+                _buildShortcut(
+                    icon: Icons.settings,
+                    title: "ตั้งค่าใบเสร็จ",
+                    context: context),
+                _buildShortcut(
+                    icon: Icons.label_important_outline,
+                    title: "เครื่องมือสร้างฉลาก",
+                    context: context),
               ],
             ),
           ),
@@ -319,6 +329,8 @@ class _MyHomepagaState extends State<MyHomepage> {
       "คำนวนราคา": const SalePage(),
       "เพิ่มบิล(ซัพพายเออร์)": const add_Supplier(),
       "รับข้อมูล/ส่งออกข้อมูล": const ImportExportPage(),
+      "ตั้งค่าใบเสร็จ": const BillSettingsPage(), // <-- 2. เพิ่ม route นี้
+      "เครื่องมือสร้างฉลาก": const StandaloneBarcodePage(), //
     };
 
     return GestureDetector(
