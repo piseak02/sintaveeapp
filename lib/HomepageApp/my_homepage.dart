@@ -3,24 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
-import 'package:sintaveeapp/Database/bill_model.dart';
-import 'package:sintaveeapp/Database/category_model.dart';
 import 'package:sintaveeapp/Database/lot_model.dart';
-import 'package:sintaveeapp/Database/product_model.dart';
-import 'package:sintaveeapp/Database/supplier_model.dart';
-import 'package:sintaveeapp/Database/supplier_name_model.dart';
-import 'package:sintaveeapp/Import_Export_File/import_export_file.dart';
-import 'package:sintaveeapp/Product/EditProduct.dart';
-import 'package:sintaveeapp/Product/Edit_Price_Product.dart';
-import 'package:sintaveeapp/Product/Edit_Stock_Product.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
 import 'package:sintaveeapp/Product/list_exp_date_product.dart';
 import 'package:sintaveeapp/Product/list_product.dart';
 import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
 import 'package:sintaveeapp/services/auth_service.dart';
-import 'package:sintaveeapp/Bill_Page/bill_settings_page.dart'; //  <-- 1. เพิ่ม import นี้
-import 'package:sintaveeapp/StandaloneBarcode/standalone_barcode_page.dart'; // <-- เพิ่ม import
+import 'package:sintaveeapp/Bill_Page/bill_settings_page.dart';
+import 'package:sintaveeapp/StandaloneBarcode/standalone_barcode_page.dart';
+import 'package:sintaveeapp/Product/EditProduct.dart';
+import 'package:sintaveeapp/Product/Edit_Price_Product.dart';
+import 'package:sintaveeapp/Product/Edit_Stock_Product.dart';
+import 'package:sintaveeapp/Import_Export_File/import_export_file.dart';
 
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -35,20 +30,19 @@ class MyHomepage extends StatefulWidget {
 }
 
 class _MyHomepagaState extends State<MyHomepage> {
-  String _username = ''; // ✅ 1. ตัวแปรสำหรับเก็บชื่อผู้ใช้
+  String _username = '';
   bool _isDialogShowing = false;
   final AuthService _authService = AuthService();
-  late Future<void> _initHiveBoxesFuture;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _initHiveBoxesFuture = _openRequiredBoxes();
-    _loadUsername(); // ✅ 3. เรียกใช้ฟังก์ชันโหลดชื่อ
+    // ไม่จำเป็นต้องเปิด Box ที่นี่แล้ว เพราะเปิดใน main.dart แล้ว
+    _loadUsername();
   }
 
-  /// ✅ 2. ฟังก์ชันสำหรับโหลดชื่อผู้ใช้จาก SharedPreferences
+  /// ฟังก์ชันสำหรับโหลดชื่อผู้ใช้จาก SharedPreferences
   Future<void> _loadUsername() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
@@ -73,8 +67,9 @@ class _MyHomepagaState extends State<MyHomepage> {
     final lastLoginDate = DateTime.parse(lastLoginTimestamp);
     final difference = DateTime.now().toUtc().difference(lastLoginDate);
 
-    ////////difference.inMinutes >= 1  เปลี่ยนเป็นนาทีใช้คำสั่งนี้
+////////difference.inMinutes >= 1  เปลี่ยนเป็นนาทีใช้คำสั่งนี้
     /// difference.inDays >= 30 คำสั่งนี้ เปลี่ยนเป็นวัน
+
     if (difference.inDays >= 30) {
       _showReLoginDialog("ซีซั่นของคุณหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
     }
@@ -116,20 +111,6 @@ class _MyHomepagaState extends State<MyHomepage> {
     widget.onLogout();
   }
 
-  Future<void> _openRequiredBoxes() async {
-    await Future.wait([
-      if (!Hive.isBoxOpen('lots')) Hive.openBox<LotModel>('lots'),
-      if (!Hive.isBoxOpen('products')) Hive.openBox<ProductModel>('products'),
-      if (!Hive.isBoxOpen('categories'))
-        Hive.openBox<CategoryModel>('categories'),
-      if (!Hive.isBoxOpen('bills')) Hive.openBox<BillModel>('bills'),
-      if (!Hive.isBoxOpen('suppliers'))
-        Hive.openBox<SupplierModel>('suppliers'),
-      if (!Hive.isBoxOpen('supplierNames'))
-        Hive.openBox<SupplierNameModel>('supplierNames'),
-    ]);
-  }
-
   void onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -150,25 +131,12 @@ class _MyHomepagaState extends State<MyHomepage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _initHiveBoxesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasError) {
-          return Scaffold(
-              body: Center(
-                  child: Text(
-                      'เกิดข้อผิดพลาดในการโหลดข้อมูล: ${snapshot.error}')));
-        }
-        return _buildHomePageContent();
-      },
-    );
+    // ไม่จำเป็นต้องใช้ FutureBuilder แล้ว เพราะ Box ถูกเปิดไว้เรียบร้อย
+    return _buildHomePageContent();
   }
 
   Widget _buildHomePageContent() {
+    // ... โค้ดส่วน UI ที่เหลือยังคงเหมือนเดิม ...
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -189,7 +157,6 @@ class _MyHomepagaState extends State<MyHomepage> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.black)),
-                // ✅ 4. นำชื่อผู้ใช้ที่โหลดมาแสดงผล
                 Text(_username,
                     style: const TextStyle(
                         fontSize: 16,
@@ -200,13 +167,6 @@ class _MyHomepagaState extends State<MyHomepage> {
           ],
         ),
         actions: [
-          ////ปุุ่มแจ้งเตือน
-          // *******************************
-          // IconButton(
-          // icon: const Icon(Icons.notifications),
-          //color: Colors.black,
-          // onPressed: () {},
-          //  ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'ออกจากระบบ',
@@ -241,7 +201,6 @@ class _MyHomepagaState extends State<MyHomepage> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        // ✅ 5. แก้ไขให้พื้นหลังกลับมาแสดงผล
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/wallpaper.jpg"),
@@ -249,7 +208,6 @@ class _MyHomepagaState extends State<MyHomepage> {
             alignment: Alignment.center,
           ),
         ),
-        // ✅ 6. แก้ไขให้ปุ่มอยู่ตรงกลาง
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -331,8 +289,8 @@ class _MyHomepagaState extends State<MyHomepage> {
       "คำนวนราคา": const SalePage(),
       "เพิ่มบิล(ซัพพายเออร์)": const add_Supplier(),
       "รับข้อมูล/ส่งออกข้อมูล": const ImportExportPage(),
-      "ตั้งค่าใบเสร็จ": const BillSettingsPage(), // <-- 2. เพิ่ม route นี้
-      "เครื่องมือสร้างฉลาก": const StandaloneBarcodePage(), //
+      "ตั้งค่าใบเสร็จ": const BillSettingsPage(),
+      "เครื่องมือสร้างฉลาก": const StandaloneBarcodePage(),
     };
 
     return GestureDetector(

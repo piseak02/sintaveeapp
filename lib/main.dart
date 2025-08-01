@@ -40,7 +40,7 @@ Future<void> main() async {
   await Hive.openBox<ProductModel>('products');
   await Hive.openBox<LotModel>('lots');
   await Hive.openBox<SupplierModel>('suppliers');
-  await Hive.openBox<SupplierNameModel>('supplier_names');
+  await Hive.openBox<SupplierNameModel>('supplierNames');
   await Hive.openBox<BillModel>('bills');
   await Hive.openBox<BillItem>('bill_items');
   await Hive.openBox<SavedLabelModel>(
