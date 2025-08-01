@@ -16,9 +16,9 @@ class add_Supplier extends StatefulWidget {
 }
 
 class _addSupplierState extends State<add_Supplier> {
+  // ... โค้ดส่วนอื่นๆ ยังคงเหมือนเดิม ...
   final TextEditingController _paymentController = TextEditingController();
 
-  // สำหรับเก็บภาพที่ถ่ายได้ (รองรับหลายรูป)
   List<File> _billImageFiles = [];
 
   late Box<SupplierModel> _supplierBox;
@@ -41,25 +41,24 @@ class _addSupplierState extends State<add_Supplier> {
     _requestCameraPermission();
   }
 
-  /// โหลดรายชื่อซัพพายเออร์จาก Hive
   void _loadSuppliers() {
-    final suppliers = _supplierBox.values.toList().cast<SupplierModel>();
+    final supplierNameBox = Hive.box<SupplierNameModel>('supplierNames');
     setState(() {
-      _supplierNames = suppliers.map((s) => s.name).toList();
+      _supplierNames = supplierNameBox.values.map((s) => s.name).toList();
     });
   }
 
-  /// ขอสิทธิ์กล้อง
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("กรุณาให้สิทธิ์ใช้งานกล้อง")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("กรุณาให้สิทธิ์ใช้งานกล้อง")),
+        );
+      }
     }
   }
 
-  /// ถ่ายภาพแล้วเพิ่มเข้าไปในรายการ _billImageFiles
   Future<void> _captureImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.camera);
@@ -70,7 +69,6 @@ class _addSupplierState extends State<add_Supplier> {
     }
   }
 
-  /// สร้างชื่อซัพพายเออร์ใหม่
   void _createNewSupplierName() {
     final TextEditingController newNameController = TextEditingController();
     showDialog(
@@ -94,14 +92,15 @@ class _addSupplierState extends State<add_Supplier> {
               onPressed: () {
                 final newName = newNameController.text.trim();
                 if (newName.isNotEmpty) {
-                  // สมมุติว่าเราเพิ่มชื่อไปใน box ของ SupplierNameModel ด้วย
                   final supplierNameBox =
-                      Hive.box<SupplierNameModel>('supplierNames');
-                  supplierNameBox.add(SupplierNameModel(name: newName));
-                  setState(() {
-                    _supplierNames.add(newName);
-                    _selectedSupplierName = newName;
-                  });
+                      Hive.box<SupplierNameModel>('supplier_names');
+                  if (!supplierNameBox.values.any((s) => s.name == newName)) {
+                    supplierNameBox.add(SupplierNameModel(name: newName));
+                    setState(() {
+                      _supplierNames.add(newName);
+                      _selectedSupplierName = newName;
+                    });
+                  }
                 }
                 Navigator.pop(context);
               },
@@ -113,9 +112,8 @@ class _addSupplierState extends State<add_Supplier> {
     );
   }
 
-  /// ค้นหาชื่อซัพพายเออร์ (แสดง dialog พร้อมปุ่มลบในผลลัพธ์)
   void _showSearchDialog() {
-    final nameBox = Hive.box<SupplierNameModel>('supplierNames');
+    final nameBox = Hive.box<SupplierNameModel>('supplier_names');
     List<SupplierNameModel> allNames = nameBox.values.toList();
 
     showDialog(
@@ -215,7 +213,6 @@ class _addSupplierState extends State<add_Supplier> {
     );
   }
 
-  /// บันทึกข้อมูลซัพพายเออร์ (รวมวันที่บันทึก)
   void _saveSupplier() {
     if (_selectedSupplierName == null || _selectedSupplierName!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -229,14 +226,13 @@ class _addSupplierState extends State<add_Supplier> {
       name: _selectedSupplierName!,
       billImagePath: imagesCombined.isEmpty ? null : imagesCombined,
       paymentAmount: payment,
-      recordDate: DateTime.now(), // บันทึกวันที่ในที่นี้
+      recordDate: DateTime.now(),
     );
     _supplierBox.add(newSupplier);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("บันทึก Supplier สำเร็จ")),
     );
     _clearFields();
-    _loadSuppliers();
   }
 
   void _clearFields() {
@@ -250,8 +246,10 @@ class _addSupplierState extends State<add_Supplier> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // สีพื้นหลังเต็มจอ
+      backgroundColor: Colors.white,
+      // --- [แก้ไข] แก้ไขที่บรรทัดนี้ ---
       body: SafeArea(
+        top: false, // บอกให้ SafeArea ไม่ต้องเว้นที่ว่างด้านบน
         child: SingleChildScrollView(
           child: Column(
             children: [
@@ -298,7 +296,7 @@ class _addSupplierState extends State<add_Supplier> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // ช่องเลือกซัพพายเออร์ (Dropdown) ดึงข้อมูลจาก box supplierNames
+                    // ช่องเลือกซัพพายเออร์ (Dropdown)
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: "เลือกซัพพายเออร์",
@@ -309,11 +307,10 @@ class _addSupplierState extends State<add_Supplier> {
                         fillColor: Colors.grey[100],
                       ),
                       value: _selectedSupplierName,
-                      items: Hive.box<SupplierNameModel>('supplierNames')
-                          .values
-                          .map((supplierName) => DropdownMenuItem<String>(
-                                value: supplierName.name,
-                                child: Text(supplierName.name),
+                      items: _supplierNames
+                          .map((name) => DropdownMenuItem<String>(
+                                value: name,
+                                child: Text(name),
                               ))
                           .toList(),
                       onChanged: (value) {
@@ -338,7 +335,7 @@ class _addSupplierState extends State<add_Supplier> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // แสดงภาพบิลที่ถ่าย (รองรับหลายรูป) ในรูปแบบ horizontal scroll view
+                    // แสดงภาพบิลที่ถ่าย
                     _billImageFiles.isNotEmpty
                         ? SizedBox(
                             height: 120,
@@ -371,35 +368,43 @@ class _addSupplierState extends State<add_Supplier> {
                             child: const Center(child: Text("ยังไม่มีภาพบิล")),
                           ),
                     const SizedBox(height: 10),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    // ปุ่มถ่ายบิลเพิ่มเติม
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
+                        onPressed: _captureImage,
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text("ถ่ายบิลเพิ่มเติม"),
                       ),
-                      onPressed: _captureImage,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text("ถ่ายบิลเพิ่มเติม"),
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    // ปุ่มบันทึก
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 16),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40, vertical: 16),
-                      ),
-                      onPressed: _saveSupplier,
-                      child: const Text(
-                        "บันทึก Supplier",
-                        style: TextStyle(fontSize: 16),
+                        onPressed: _saveSupplier,
+                        child: const Text(
+                          "บันทึก Supplier",
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                   ],
