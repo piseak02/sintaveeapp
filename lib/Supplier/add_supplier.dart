@@ -93,7 +93,7 @@ class _addSupplierState extends State<add_Supplier> {
                 final newName = newNameController.text.trim();
                 if (newName.isNotEmpty) {
                   final supplierNameBox =
-                      Hive.box<SupplierNameModel>('supplier_names');
+                      Hive.box<SupplierNameModel>('supplierNames');
                   if (!supplierNameBox.values.any((s) => s.name == newName)) {
                     supplierNameBox.add(SupplierNameModel(name: newName));
                     setState(() {
