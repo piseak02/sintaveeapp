@@ -2,20 +2,28 @@
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'device_info_service.dart'; // <<<< Import ที่สร้างขึ้นมาใหม่
 
 class AuthService {
   final ApiService _apiService = ApiService();
 
-  /// **Login: เพิ่มการบันทึก "เวลาล็อกอินล่าสุด"**
   Future<String?> login(String username, String password, String token) async {
-    final result = await _apiService.login(username, password, token);
+    // ✅ ดึง Device ID จากเครื่อง
+    final deviceId = await DeviceInfoService.getDeviceId();
+    if (deviceId == null) {
+      return 'ไม่สามารถดึงข้อมูลเครื่องได้ กรุณาตรวจสอบการอนุญาตของแอป';
+    }
+
+    // ✅ ส่ง deviceId ไปกับ request
+    final result = await _apiService.login(username, password, token, deviceId);
 
     if (result['status'] == 'success') {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
       await prefs.setString('username', result['username']);
       await prefs.setString('token_expires_at', result['expires_at']);
-      // ✅ บันทึกเวลาที่ล็อกอินสำเร็จ
+      // ✅ บันทึก deviceId ที่ใช้ล็อกอินสำเร็จ
+      await prefs.setString('device_id', deviceId);
       await prefs.setString(
           'last_login_timestamp', DateTime.now().toUtc().toIso8601String());
       return null;
@@ -24,37 +32,35 @@ class AuthService {
     }
   }
 
-  /// **checkSession: ตรวจสอบแค่ Token หมดอายุ (สำหรับตอนเปิดแอป)**
   Future<Map<String, dynamic>> checkSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
+    // ✅ ดึง deviceId ที่บันทึกไว้ในเครื่อง
+    final storedDeviceId = prefs.getString('device_id');
 
-    if (token == null) {
-      return {'loggedIn': false, 'message': 'No token found.'};
+    if (token == null || storedDeviceId == null) {
+      return {'loggedIn': false, 'message': 'No token or device info found.'};
     }
 
-    // ตรวจสอบ Token หมดอายุกับ Server ก่อนเสมอ
-    final tokenResult = await _apiService.validateToken(token);
+    // ✅ ส่ง deviceId ที่บันทึกไว้ไปตรวจสอบ
+    final tokenResult = await _apiService.validateToken(token, storedDeviceId);
 
     if (!tokenResult.isValid) {
       await logout();
-      return {
-        'loggedIn': false,
-        'message': "โทเค็นของคุณหมดอายุ กรุณาติดต่อผู้พัฒนา"
-      };
+      return {'loggedIn': false, 'message': tokenResult.message};
     }
 
-    // ถ้า Token ยังไม่หมดอายุ ถือว่ายังล็อกอินอยู่
     return {'loggedIn': true, 'message': 'Session is valid.'};
   }
 
-  /// **Logout: ล้างข้อมูลทั้งหมด รวมถึงเวลาล็อกอินล่าสุด**
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('username');
     await prefs.remove('token_expires_at');
-    await prefs.remove('last_login_timestamp'); // ✅ ล้างเวลาล็อกอิน
+    await prefs.remove('last_login_timestamp');
+    // ✅ ล้าง deviceId ตอน logout ด้วย
+    await prefs.remove('device_id');
   }
 
   Future<String?> register(String username, String password) async {

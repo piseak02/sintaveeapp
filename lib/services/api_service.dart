@@ -5,20 +5,19 @@ import '../models/token_result.dart';
 
 class ApiService {
   final Dio _dio = Dio();
-  // **สำคัญ: ตรวจสอบให้แน่ใจว่า URL นี้เป็นของคุณ**
   static const String _appsScriptUrl =
-      "https://script.google.com/macros/s/AKfycbwT6o0_B0ZXQXauuby46cRzTj_rOId1iGrqZOVIUwWGbJmXpdBzYFwcgsOyUpTak_VECw/exec";
+      "https://script.google.com/macros/s/AKfycbzHymnE70lFzbW9CSUUYUjlsXBCdiqaWErni-sb_Sj6SJXRbp-7abThSgtoXNWl46EB/exec";
 
-  // ... ฟังก์ชัน login และ register ของคุณ ...
+  // ✅ แก้ไขฟังก์ชัน login ให้รับ deviceId
   Future<Map<String, dynamic>> login(
-      String username, String password, String token) async {
-    // ... โค้ดเดิม ...
+      String username, String password, String token, String deviceId) async {
     try {
       final uri = Uri.parse(_appsScriptUrl).replace(queryParameters: {
         'action': 'login',
         'username': username,
         'password': password,
         'token': token,
+        'deviceId': deviceId, // <<<< เพิ่ม deviceId
       });
       final response = await _dio.get(uri.toString());
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
@@ -38,7 +37,6 @@ class ApiService {
 
   Future<Map<String, dynamic>> register(
       String username, String password) async {
-    // ... โค้ดเดิม ...
     try {
       final uri = Uri.parse(_appsScriptUrl).replace(queryParameters: {
         'action': 'registerUser',
@@ -61,20 +59,17 @@ class ApiService {
     }
   }
 
-  /// **ฟังก์ชัน validateToken (เวอร์ชันสุดท้าย - Cache Busting)**
-  /// เพิ่ม timestamp ที่ไม่ซ้ำกันใน URL เพื่อป้องกันการ Cache ทุกรูปแบบ
-  Future<TokenResult> validateToken(String token) async {
+  /// ✅ แก้ไขฟังก์ชัน validateToken ให้รับและส่ง deviceId
+  Future<TokenResult> validateToken(String token, String deviceId) async {
     try {
-      // ✅ สร้าง timestamp ที่ไม่ซ้ำกันสำหรับทุกครั้งที่เรียกใช้
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-
       final uri = Uri.parse(_appsScriptUrl).replace(queryParameters: {
         'action': 'validateToken',
         'token': token,
-        'timestamp': timestamp, // ✅ เพิ่ม timestamp เข้าไปใน URL
+        'deviceId': deviceId, // <<<< เพิ่ม deviceId
+        'timestamp': timestamp,
       });
 
-      // เพิ่ม Options เพื่อบังคับให้ดึงข้อมูลใหม่เสมอ
       final response = await _dio.get(
         uri.toString(),
         options: Options(
