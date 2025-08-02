@@ -6,7 +6,7 @@ import '../models/token_result.dart';
 class ApiService {
   final Dio _dio = Dio();
   static const String _appsScriptUrl =
-      "https://script.google.com/macros/s/AKfycbzHymnE70lFzbW9CSUUYUjlsXBCdiqaWErni-sb_Sj6SJXRbp-7abThSgtoXNWl46EB/exec";
+      "https://script.google.com/macros/s/AKfycbzG42T6bzFgm57IjBuf0G2V1dVgHjEo_LgWfSG8r6W1gUb0dJ2TbBMEwN8yzEEtp6vq_w/exec";
 
   // ✅ แก้ไขฟังก์ชัน login ให้รับ deviceId
   Future<Map<String, dynamic>> login(
