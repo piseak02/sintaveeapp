@@ -4,10 +4,16 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:shared_preferences/shared_preferences.dart'; // [แก้ไข] 1. เพิ่ม import สำหรับ SharedPreferences
-import 'dart:io'; // [แก้ไข] 2. เพิ่ม import สำหรับการจัดการไฟล์
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
-import '../Database/bill_model.dart'; // ไฟล์ Model บิล
+import 'package:screenshot/screenshot.dart';
+import 'package:esc_pos_printer_plus/esc_pos_printer_plus.dart';
+import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
+import 'package:image/image.dart' as img;
+
+import '../Database/bill_model.dart';
+import 'receipt_widget.dart'; // import แม่แบบใบเสร็จ
 
 class BillDetailPage extends StatefulWidget {
   final BillModel bill;
@@ -19,276 +25,306 @@ class BillDetailPage extends StatefulWidget {
 }
 
 class _BillDetailPageState extends State<BillDetailPage> {
-  late PdfPageFormat _selectedFormat;
-
-  // ขนาดกระดาษที่เลือกได้
   final List<Map<String, dynamic>> _formats = [
-    {
-      'label': 'A4',
-      'format': PdfPageFormat.a4,
-    },
+    {'label': 'A4', 'format': PdfPageFormat.a4},
     {
       'label': 'Custom (80 x 210 มม.)',
-      'format': PdfPageFormat(80 * PdfPageFormat.mm, 210 * PdfPageFormat.mm, marginAll: 10),
+      'format': PdfPageFormat(80 * PdfPageFormat.mm, 210 * PdfPageFormat.mm,
+          marginAll: 10)
     },
     {
       'label': 'Custom (58 x 210 มม.)',
-      'format': PdfPageFormat(58 * PdfPageFormat.mm, 210 * PdfPageFormat.mm, marginAll: 10),
+      'format': PdfPageFormat(58 * PdfPageFormat.mm, 210 * PdfPageFormat.mm,
+          marginAll: 10)
     },
   ];
+  late PdfPageFormat _selectedFormat = _formats.first['format'];
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedFormat = PdfPageFormat.a4; // ตั้งค่าเริ่มต้นเป็น A4
-  }
+  final ScreenshotController _screenshotController = ScreenshotController();
+  bool _isWorking = false;
 
-  /// สร้าง PDF จาก BillModel
-  ///
-  /// สำหรับหน้ากระดาษ A4 เราใช้ MultiPage พร้อม header และ footer
-  /// สำหรับหน้ากระดาษอื่น (สลิป) เราจะทำเป็นหน้าเดียวที่ต่อเนื่องกัน
+  /// [ปรับปรุง] ฟังก์ชันสร้าง PDF สำหรับ A4 ให้ดึงข้อมูลจาก SharedPreferences
   Future<Uint8List> _generatePdf(PdfPageFormat format) async {
-    final doc = pw.Document();
-
-    // โหลดฟอนต์ไทย
+    final doc = pw.Document(version: PdfVersion.pdf_1_5, compress: true);
     final fontData = await rootBundle.load("assets/fonts/THSarabun.ttf");
-    final fontThai = pw.Font.ttf(fontData.buffer.asByteData());
+    final ttf = pw.Font.ttf(fontData);
 
-    // [แก้ไข] 3. โหลดโลโก้และข้อความท้ายบิลแบบ Dynamic
-    // ดึงค่าที่บันทึกไว้จาก SharedPreferences
+    // --- [แก้ไข] ดึงข้อมูลร้านค้าและข้อความท้ายบิลจาก SharedPreferences ---
     final prefs = await SharedPreferences.getInstance();
+    final shopName = prefs.getString('bill_shop_name') ?? 'ร้านค้าตัวอย่าง';
+    final address =
+        prefs.getString('bill_address') ?? '123 ถนนตัวอย่าง ต.ตัวอย่าง อ.เมือง';
+    final phone = prefs.getString('bill_phone') ?? '081-234-5678';
     final logoPath = prefs.getString('bill_logo_path');
-    final footerLine1 = prefs.getString('bill_footer_line1') ?? "เวลาทำการ: เปิดทุกวัน 04.00 - 18.00";
-    final footerLine2 = prefs.getString('bill_footer_line2') ?? "ขอบคุณที่ใช้บริการ";
+    final footerLine1 = prefs.getString('bill_footer_line1') ??
+        "เวลาทำการ: เปิดทุกวัน 04.00 - 18.00";
+    final footerLine2 =
+        prefs.getString('bill_footer_line2') ?? "ขอบคุณที่ใช้บริการ";
 
-    pw.MemoryImage? logoImage;
-    // ตรวจสอบว่ามี path ของโลโก้ที่ผู้ใช้เลือกไว้หรือไม่
+    pw.ImageProvider? logoImage;
     if (logoPath != null && await File(logoPath).exists()) {
-      // ถ้ามี ให้โหลดรูปจาก path นั้น
-      final logoBytes = await File(logoPath).readAsBytes();
-      logoImage = pw.MemoryImage(logoBytes);
+      final fileBytes = await File(logoPath).readAsBytes();
+      logoImage = pw.MemoryImage(fileBytes);
     } else {
-      // ถ้าไม่มี หรือหาไฟล์ไม่เจอ ให้ใช้โลโก้ตั้งต้นจาก assets
-      final defaultLogoBytes = (await rootBundle.load('assets/logo1.png')).buffer.asUint8List();
+      final defaultLogoBytes =
+          (await rootBundle.load('assets/logo1.png')).buffer.asUint8List();
       logoImage = pw.MemoryImage(defaultLogoBytes);
     }
 
-    // คำนวณยอดรวมก่อนหักส่วนลด
     final double totalAmount = widget.bill.netTotal + widget.bill.totalDiscount;
 
-    if (format == PdfPageFormat.a4) {
-      // Layout สำหรับ A4 พร้อม header และ footer โดยแบ่งหน้าอัตโนมัติ (MultiPage)
-      doc.addPage(
-        pw.MultiPage(
-          pageFormat: format,
-          margin: const pw.EdgeInsets.all(32),
-          header: (pw.Context context) {
-            // แสดงโลโก้เฉพาะหน้าแรก
-            if (context.pageNumber == 1) {
-              // [แก้ไข] 4. ใช้ logoImage ที่โหลดมาแบบ Dynamic
-              return pw.Center(child: pw.Image(logoImage!, width: 150, height: 150));
-            }
-            return pw.Container();
-          },
-          footer: (pw.Context context) {
-            return pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 10),
-              child: pw.Text(
-                'Page ${context.pageNumber} of ${context.pagesCount}',
-                style: pw.TextStyle(font: fontThai, fontSize: 10),
-              ),
-            );
-          },
-          build: (pw.Context context) {
-            return [
-              pw.SizedBox(height: 20),
-              pw.Text("บิลเลขที่: ${widget.bill.billId}", style: pw.TextStyle(font: fontThai, fontSize: 16)),
-              pw.Text(
-                "วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}",
-                style: pw.TextStyle(font: fontThai, fontSize: 16),
-              ),
-              pw.Divider(),
-              // ตารางรายการสินค้า (โค้ดส่วนนี้คงเดิม)
-              pw.Table(
-                children: [
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text("ลำดับ", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text("ชื่อสินค้า", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text("จำนวน", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text("ราคาต่อหน่วย", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text("จำนวนเงิน", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  ...List.generate(widget.bill.items.length, (index) {
-                    final item = widget.bill.items[index];
-                    return pw.TableRow(
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${index + 1}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text(item.productName, style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${item.quantity}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${item.price.toStringAsFixed(2)}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
-                          child: pw.Text("${item.itemNetTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Divider(),
-              // สรุปยอด (โค้ดส่วนนี้คงเดิม)
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("ยอดรวมสุทธิ:", style: pw.TextStyle(font: fontThai, fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.netTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 16)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("เงินที่รับ:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.moneyReceived.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text("เงินทอน:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                  pw.Text("${widget.bill.change.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 14)),
-                ],
-              ),
-              pw.SizedBox(height: 20),
-              pw.Center(
-                child: pw.Column(
-                  children: [
-                    // [แก้ไข] 5. ใช้ข้อความท้ายบิลที่โหลดมาแบบ Dynamic
-                    pw.Text(footerLine1, style: pw.TextStyle(font: fontThai, fontSize: 14)),
-                    pw.Text(footerLine2, style: pw.TextStyle(font: fontThai, fontSize: 14)),
-                  ],
-                ),
-              ),
-            ];
-          },
-        ),
-      );
-    } else {
-      // สำหรับหน้ากระดาษที่ไม่ใช่ A4 (สลิป)
-      final slipFormat = PdfPageFormat(format.width, 1000 * PdfPageFormat.mm, marginAll: 10);
-      
-      doc.addPage(
-        pw.Page(
-          pageFormat: slipFormat,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // [แก้ไข] 4. ใช้ logoImage ที่โหลดมาแบบ Dynamic
-                pw.Center(child: pw.Image(logoImage!, width: 100, height: 100)),
-                pw.SizedBox(height: 10),
-                pw.Text("บิลเลขที่: ${widget.bill.billId}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                pw.Text("วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                pw.SizedBox(height: 10),
-                pw.Text("รายการสินค้า:", style: pw.TextStyle(font: fontThai, fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                pw.Divider(),
-                // ...widget.bill.items.map (โค้ดส่วนนี้คงเดิม)
-                 ...widget.bill.items.map((item) {
-                  return pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(item.productName, style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                      pw.SizedBox(height: 1),
-                      pw.Text("ราคา: ${item.price.toStringAsFixed(2)} x ${item.quantity}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                      pw.Text("ส่วนลด: ${item.discount.toStringAsFixed(2)}", style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                      pw.Text("รวม: ${item.itemNetTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai, fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                      pw.Divider(),
-                    ],
-                  );
-                }).toList(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("รวมทั้งสิ้น:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${totalAmount.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("ส่วนลดท้ายบิล:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.totalDiscount.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
-                  ],
-                ),
-                pw.Divider(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("ยอดรวมสุทธิ:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.netTotal.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("เงินที่รับ:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.moneyReceived.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("เงินทอน:", style: pw.TextStyle(font: fontThai, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${widget.bill.change.toStringAsFixed(2)} บาท", style: pw.TextStyle(font: fontThai)),
-                  ],
-                ),
-                 pw.SizedBox(height: 20),
-                pw.Center(
-                  child: pw.Column(
-                    children: [
-                      // [แก้ไข] 5. ใช้ข้อความท้ายบิลที่โหลดมาแบบ Dynamic
-                      pw.Text(footerLine1, style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                      pw.Text(footerLine2, style: pw.TextStyle(font: fontThai, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    }
+    final headerStyle =
+        pw.TextStyle(font: ttf, fontSize: 22, fontWeight: pw.FontWeight.bold);
+    final subHeaderStyle = pw.TextStyle(font: ttf, fontSize: 16);
+    final bodyStyle = pw.TextStyle(font: ttf, fontSize: 14);
+    final tableHeaderStyle =
+        pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold);
+    final totalLabelStyle =
+        pw.TextStyle(font: ttf, fontSize: 15, fontWeight: pw.FontWeight.bold);
+    final totalValueStyle = pw.TextStyle(font: ttf, fontSize: 15);
 
+    doc.addPage(
+      pw.Page(
+        pageFormat: format,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // --- [แก้ไข] ส่วนหัวใช้ข้อมูลที่ดึงมา ---
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('ใบเสร็จรับเงิน', style: headerStyle),
+                        pw.Text(shopName, style: subHeaderStyle),
+                        pw.Text(address, style: bodyStyle),
+                        pw.Text('โทร: $phone', style: bodyStyle),
+                      ],
+                    ),
+                  ),
+                  if (logoImage != null)
+                    pw.SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                    ),
+                ],
+              ),
+              pw.SizedBox(height: 1 * PdfPageFormat.cm),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('เลขที่: ${widget.bill.billId}',
+                      style: subHeaderStyle),
+                  pw.Text(
+                      'วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}',
+                      style: subHeaderStyle),
+                ],
+              ),
+              pw.Divider(thickness: 1.5),
+              pw.SizedBox(height: 0.5 * PdfPageFormat.cm),
+
+              // --- ตารางรายการสินค้า ---
+              pw.Table.fromTextArray(
+                border: pw.TableBorder.all(
+                    color: PdfColors.white), // <--- แก้ไขตรงนี้
+                headerStyle: tableHeaderStyle,
+                cellStyle: bodyStyle,
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColors.white),
+                cellAlignment: pw.Alignment.center,
+                cellAlignments: {
+                  1: pw.Alignment.centerLeft,
+                  3: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerRight,
+                },
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(1),
+                  1: const pw.FlexColumnWidth(6),
+                  2: const pw.FlexColumnWidth(1.5),
+                  3: const pw.FlexColumnWidth(2),
+                  4: const pw.FlexColumnWidth(2.5),
+                },
+                headers: ['ลำดับ', 'รายการ', 'จำนวน', 'ราคา/หน่วย', 'ราคารวม'],
+                data: widget.bill.items.map((item) {
+                  final index = widget.bill.items.indexOf(item) + 1;
+                  return [
+                    index.toString(),
+                    item.productName,
+                    item.quantity.toString(),
+                    item.price.toStringAsFixed(2),
+                    item.itemNetTotal.toStringAsFixed(2),
+                  ];
+                }).toList(),
+              ),
+              pw.Divider(),
+              pw.SizedBox(height: 0.5 * PdfPageFormat.cm),
+
+              // --- ส่วนสรุปยอด ---
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
+                children: [
+                  pw.Container(
+                    width: 280,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        _buildTotalRowPdf(
+                            'รวมเป็นเงิน',
+                            totalAmount.toStringAsFixed(2),
+                            totalLabelStyle,
+                            totalValueStyle),
+                        _buildTotalRowPdf(
+                            'ส่วนลดท้ายบิล',
+                            widget.bill.totalDiscount.toStringAsFixed(2),
+                            totalLabelStyle,
+                            totalValueStyle),
+                        pw.Divider(color: PdfColors.grey600),
+                        _buildTotalRowPdf(
+                            'ยอดรวมสุทธิ',
+                            widget.bill.netTotal.toStringAsFixed(2),
+                            totalLabelStyle,
+                            totalValueStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold)),
+                        pw.Divider(color: PdfColors.grey600),
+                        _buildTotalRowPdf(
+                            'รับเงิน',
+                            widget.bill.moneyReceived.toStringAsFixed(2),
+                            totalLabelStyle,
+                            totalValueStyle),
+                        _buildTotalRowPdf(
+                            'เงินทอน',
+                            widget.bill.change.toStringAsFixed(2),
+                            totalLabelStyle,
+                            totalValueStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // --- ส่วนท้าย ---
+              pw.Spacer(),
+              pw.Divider(thickness: 1.5),
+              pw.Center(child: pw.Text(footerLine1, style: bodyStyle)),
+              pw.Center(child: pw.Text(footerLine2, style: bodyStyle)),
+            ],
+          );
+        },
+      ),
+    );
     return doc.save();
+  }
+
+  // Helper สำหรับสร้างแถวสรุปยอดใน PDF
+  pw.Widget _buildTotalRowPdf(String label, String value,
+      pw.TextStyle labelStyle, pw.TextStyle valueStyle) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label, style: labelStyle),
+          pw.Text(value, style: valueStyle),
+        ],
+      ),
+    );
+  }
+
+  /// [ใหม่] ฟังก์ชันสำหรับพิมพ์ใบเสร็จ (80mm & 58mm) เป็นรูปภาพผ่าน IP
+  Future<void> _printReceiptAsImage() async {
+    setState(() => _isWorking = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final printerIp = prefs.getString('printer_ip');
+      final autoCut = prefs.getBool('auto_cut_paper') ?? true;
+
+      if (printerIp == null || printerIp.isEmpty) {
+        throw Exception(
+            'กรุณาไปที่หน้า "ตั้งค่าเครื่องพิมพ์" เพื่อระบุ IP Address ก่อน');
+      }
+
+      double paperWidth =
+          _selectedFormat.width == (80 * PdfPageFormat.mm) ? 345 : 253;
+
+      final imageBytes = await _screenshotController.captureFromWidget(
+        Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: ReceiptWidget(
+            bill: widget.bill,
+            paperWidth: paperWidth,
+          ),
+        ),
+        delay: const Duration(milliseconds: 50),
+        pixelRatio: 1.5,
+      );
+
+      setState(() => _isWorking = false);
+
+      bool? confirmPrint = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('ตัวอย่างก่อนพิมพ์'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.memory(imageBytes, fit: BoxFit.contain),
+                const SizedBox(height: 10),
+                Text('จะพิมพ์ไปยัง IP: $printerIp',
+                    style: const TextStyle(color: Colors.grey))
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('ยกเลิก')),
+            FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('ยืนยันการพิมพ์')),
+          ],
+        ),
+      );
+
+      if (confirmPrint == true) {
+        setState(() => _isWorking = true);
+        final paperSize = _selectedFormat.width == (80 * PdfPageFormat.mm)
+            ? PaperSize.mm80
+            : PaperSize.mm58;
+        final profile = await CapabilityProfile.load();
+        final printer = NetworkPrinter(paperSize, profile);
+        final PosPrintResult res = await printer.connect(printerIp,
+            port: 9100, timeout: const Duration(seconds: 10));
+
+        if (res == PosPrintResult.success) {
+          final image = img.decodeImage(imageBytes)!;
+          printer.image(image, align: PosAlign.center);
+          printer.feed(1);
+          if (autoCut) printer.cut();
+          printer.disconnect();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('พิมพ์สำเร็จ'), backgroundColor: Colors.green));
+          }
+        } else {
+          throw Exception('เชื่อมต่อไม่สำเร็จ: ${res.msg}');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _isWorking = false);
+    }
   }
 
   @override
@@ -306,11 +342,11 @@ class _BillDetailPageState extends State<BillDetailPage> {
             Text("ใบเสร็จ: ${widget.bill.billId}"),
             const SizedBox(height: 8),
             Text(
-              "วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}",
-              style: const TextStyle(fontSize: 16),
-            ),
+                "วันที่: ${widget.bill.billDate.toLocal().toString().split(' ')[0]}",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
-            const Text("รายการสินค้า:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text("รายการสินค้า:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const Divider(),
             ...widget.bill.items.map((item) {
               return Padding(
@@ -318,41 +354,47 @@ class _BillDetailPageState extends State<BillDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(item.productName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 4),
                     Text(
-                      "ราคา: ${item.price.toStringAsFixed(2)} บาท  x  ${item.quantity}",
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    Text(
-                      "ส่วนลด: ${item.discount.toStringAsFixed(2)} บาท",
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    Text(
-                      "รวม: ${item.itemNetTotal.toStringAsFixed(2)} บาท",
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
+                        "ราคา: ${item.price.toStringAsFixed(2)} บาท  x  ${item.quantity}",
+                        style: const TextStyle(fontSize: 14)),
+                    Text("ส่วนลด: ${item.discount.toStringAsFixed(2)} บาท",
+                        style: const TextStyle(fontSize: 14)),
+                    Text("รวม: ${item.itemNetTotal.toStringAsFixed(2)} บาท",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
                     const Divider(),
                   ],
                 ),
               );
             }).toList(),
-            Text("รวมทั้งสิ้น: ${totalAmount.toStringAsFixed(2)} บาท", style: const TextStyle(fontSize: 16)),
+            Text("รวมทั้งสิ้น: ${totalAmount.toStringAsFixed(2)} บาท",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 4),
-            Text("ส่วนลดท้ายบิล: ${widget.bill.totalDiscount.toStringAsFixed(2)} บาท", style: const TextStyle(fontSize: 16)),
+            Text(
+                "ส่วนลดท้ายบิล: ${widget.bill.totalDiscount.toStringAsFixed(2)} บาท",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 4),
             const Divider(thickness: 1.0),
             const SizedBox(height: 4),
             Text("ยอดรวมสุทธิ: ${widget.bill.netTotal.toStringAsFixed(2)} บาท",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text("เงินที่รับ: ${widget.bill.moneyReceived.toStringAsFixed(2)} บาท", style: const TextStyle(fontSize: 16)),
+            Text(
+                "เงินที่รับ: ${widget.bill.moneyReceived.toStringAsFixed(2)} บาท",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 8),
-            Text("เงินทอน: ${widget.bill.change.toStringAsFixed(2)} บาท", style: const TextStyle(fontSize: 16)),
+            Text("เงินทอน: ${widget.bill.change.toStringAsFixed(2)} บาท",
+                style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 16),
             Row(
               children: [
-                const Text("เลือกขนาดหน้ากระดาษ: ", style: TextStyle(fontSize: 16)),
+                const Text("เลือกขนาดหน้ากระดาษ: ",
+                    style: TextStyle(fontSize: 16)),
                 DropdownButton<PdfPageFormat>(
                   value: _selectedFormat,
                   items: _formats.map((formatData) {
@@ -372,23 +414,27 @@ class _BillDetailPageState extends State<BillDetailPage> {
               ],
             ),
             const SizedBox(height: 16),
-            // ปุ่มแสดง PDF Preview
             Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // เปิดหน้าแสดงตัวอย่าง PDF โดยใช้ขนาดหน้าที่เลือก
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PdfPreviewPage(
-                        buildPdf: (format) => _generatePdf(_selectedFormat),
-                      ),
+              child: _isWorking
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton.icon(
+                      onPressed: () {
+                        if (_selectedFormat == PdfPageFormat.a4) {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PdfPreviewPage(
+                                  buildPdf: (format) =>
+                                      _generatePdf(_selectedFormat),
+                                ),
+                              ));
+                        } else {
+                          _printReceiptAsImage();
+                        }
+                      },
+                      icon: const Icon(Icons.print),
+                      label: const Text("แสดงตัวอย่าง/พิมพ์บิล"),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.print),
-                label: const Text("แสดงตัวอย่าง/พิมพ์บิล"),
-              ),
             )
           ],
         ),
@@ -400,7 +446,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
 class PdfPreviewPage extends StatelessWidget {
   final Future<Uint8List> Function(PdfPageFormat format) buildPdf;
 
-  const PdfPreviewPage({Key? key, required this.buildPdf}) : super(key: key);
+  const PdfPreviewPage({super.key, required this.buildPdf});
 
   @override
   Widget build(BuildContext context) {

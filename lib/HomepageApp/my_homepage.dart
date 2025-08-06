@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
+import 'package:sintaveeapp/Bill_Page/bill_settings_page.dart';
 import 'package:sintaveeapp/Bottoom_Navbar/bottom_navbar.dart';
 import 'package:sintaveeapp/Database/lot_model.dart';
 import 'package:sintaveeapp/Product/add_Product.dart';
@@ -10,12 +11,12 @@ import 'package:sintaveeapp/Product/list_product.dart';
 import 'package:sintaveeapp/Sale_Page/sale_product.dart';
 import 'package:sintaveeapp/Supplier/add_supplier.dart';
 import 'package:sintaveeapp/services/auth_service.dart';
-import 'package:sintaveeapp/Bill_Page/bill_settings_page.dart';
 import 'package:sintaveeapp/StandaloneBarcode/standalone_barcode_page.dart';
 import 'package:sintaveeapp/Product/EditProduct.dart';
 import 'package:sintaveeapp/Product/Edit_Price_Product.dart';
 import 'package:sintaveeapp/Product/Edit_Stock_Product.dart';
 import 'package:sintaveeapp/Import_Export_File/import_export_file.dart';
+import 'package:sintaveeapp/settings/printer_settings_page.dart';
 
 class MyHomepage extends StatefulWidget {
   final VoidCallback onLogout;
@@ -256,6 +257,10 @@ class _MyHomepagaState extends State<MyHomepage> {
                     icon: Icons.label_important_outline,
                     title: "เครื่องมือสร้างฉลาก",
                     context: context),
+                _buildShortcut(
+                    icon: Icons.print, // <-- เพิ่มอันนี้
+                    title: "ตั้งค่าเครื่องพิมพ์",
+                    context: context),
               ],
             ),
           ),
@@ -289,8 +294,10 @@ class _MyHomepagaState extends State<MyHomepage> {
       "คำนวนราคา": const SalePage(),
       "เพิ่มบิล(ซัพพายเออร์)": const add_Supplier(),
       "รับข้อมูล/ส่งออกข้อมูล": const ImportExportPage(),
-      "ตั้งค่าใบเสร็จ": const BillSettingsPage(),
+      "ตั้งค่าใบเสร็จ":
+          const BillSettingsPage(), // <--- เพิ่มทางลัดไปหน้าตั้งค่า
       "เครื่องมือสร้างฉลาก": const StandaloneBarcodePage(),
+      "ตั้งค่าเครื่องพิมพ์": const PrinterSettingsPage(), // <-- เพิ่มอันนี้
     };
 
     return GestureDetector(

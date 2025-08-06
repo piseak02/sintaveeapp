@@ -13,6 +13,11 @@ class BillSettingsPage extends StatefulWidget {
 class _BillSettingsPageState extends State<BillSettingsPage> {
   final ImagePicker _picker = ImagePicker();
   File? _logoFile;
+
+  // Controllers for store information
+  final TextEditingController _shopNameController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _footerLine1Controller = TextEditingController();
   final TextEditingController _footerLine2Controller = TextEditingController();
 
@@ -22,7 +27,7 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
     _loadSettings();
   }
 
-  // โหลดค่าที่เคยบันทึกไว้
+  /// Loads settings from SharedPreferences
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final logoPath = prefs.getString('bill_logo_path');
@@ -31,13 +36,19 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
         _logoFile = File(logoPath);
       });
     }
+    // Load store information
+    _shopNameController.text =
+        prefs.getString('bill_shop_name') ?? 'ร้านค้าตัวอย่าง';
+    _addressController.text =
+        prefs.getString('bill_address') ?? '123 ถนนตัวอย่าง ต.ตัวอย่าง อ.เมือง';
+    _phoneController.text = prefs.getString('bill_phone') ?? '081-234-5678';
     _footerLine1Controller.text = prefs.getString('bill_footer_line1') ??
         "เวลาทำการ: เปิดทุกวัน 04.00 - 18.00";
     _footerLine2Controller.text =
         prefs.getString('bill_footer_line2') ?? "ขอบคุณที่ใช้บริการ";
   }
 
-  // เลือกรูปภาพ
+  /// Picks a logo from the gallery
   Future<void> _pickLogo() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -47,9 +58,8 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
     }
   }
 
-  // [แก้ไข] 2. ฟังก์ชันสำหรับลบโลโก้
+  /// Deletes the current logo
   Future<void> _deleteLogo() async {
-    // แสดงกล่องข้อความเพื่อยืนยันการลบ
     bool? confirmDelete = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -68,32 +78,39 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
       ),
     );
 
-    // ถ้าผู้ใช้ยืนยันการลบ
     if (confirmDelete == true) {
       setState(() {
-        _logoFile = null; // ทำให้รูปที่แสดงผลหายไป
+        _logoFile = null;
       });
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('bill_logo_path'); // ลบ path ออกจาก SharedPreferences
+      await prefs.remove('bill_logo_path');
+
+      // Check if the widget is still mounted before showing a SnackBar
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("ลบรูปภาพสำเร็จ")),
       );
     }
   }
 
-  // บันทึกการตั้งค่า
+  /// Saves all settings to SharedPreferences
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    // [แก้ไข] 3. ตรวจสอบว่า _logoFile ยังมีค่าอยู่หรือไม่ก่อนบันทึก
     if (_logoFile != null) {
       await prefs.setString('bill_logo_path', _logoFile!.path);
     } else {
-      // ถ้า _logoFile เป็น null (ถูกลบไปแล้ว) ให้ลบ path ออกจาก SharedPreferences ด้วย
       await prefs.remove('bill_logo_path');
     }
 
+    // Save store information
+    await prefs.setString('bill_shop_name', _shopNameController.text);
+    await prefs.setString('bill_address', _addressController.text);
+    await prefs.setString('bill_phone', _phoneController.text);
     await prefs.setString('bill_footer_line1', _footerLine1Controller.text);
     await prefs.setString('bill_footer_line2', _footerLine2Controller.text);
+
+    // Check if the widget is still mounted before showing a SnackBar or popping the navigator
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("บันทึกการตั้งค่าสำเร็จ!")),
@@ -102,23 +119,62 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
   }
 
   @override
+  void dispose() {
+    // Dispose controllers to free up resources
+    _shopNameController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
+    _footerLine1Controller.dispose();
+    _footerLine2Controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("ตั้งค่าใบเสร็จ"),
         backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text("ข้อมูลร้านค้า (สำหรับใบเสร็จ)",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _shopNameController,
+              decoration: const InputDecoration(
+                labelText: "ชื่อร้านค้า",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _addressController,
+              decoration: const InputDecoration(
+                labelText: "ที่อยู่",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _phoneController,
+              decoration: const InputDecoration(
+                labelText: "เบอร์โทรศัพท์",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const Divider(height: 40),
             const Text("โลโก้บนหัวบิล",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Center(
               child: _logoFile != null
-                  ? Image.file(_logoFile!, height: 150)
+                  ? Image.file(_logoFile!, height: 150, fit: BoxFit.contain)
                   : Container(
                       height: 150,
                       width: 150,
@@ -138,7 +194,6 @@ class _BillSettingsPageState extends State<BillSettingsPage> {
                   icon: const Icon(Icons.image),
                   label: const Text("เลือกโลโก้"),
                 ),
-                // [แก้ไข] 1. เพิ่มปุ่มลบรูปภาพ จะแสดงก็ต่อเมื่อมีรูปภาพอยู่แล้ว
                 if (_logoFile != null)
                   Padding(
                     padding: const EdgeInsets.only(left: 8.0),
